@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>BlackBook API Test</h1>
+    <button onclick="testMarkets()">Test /markets endpoint</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testMarkets() {
+            const result = document.getElementById('result');
+            result.textContent = 'Loading...';
+            
+            try {
+                const response = await fetch('http://localhost:3000/markets');
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                
+                const data = await response.json();
+                console.log('Data:', data);
+                
+                result.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                console.error('Error:', error);
+                result.textContent = 'Error: ' + error.message;
+            }
+        }
+        
+        // Auto-run on load
+        window.onload = () => testMarkets();
+    </script>
+</body>
+</html>

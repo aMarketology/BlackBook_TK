@@ -1,0 +1,39 @@
+## Ledger Endpoints 💰
+GET /balance/:address: Retrieves the current token balance for a specific wallet address provided in the URL path.
+
+POST /deposit: Allows adding funds to an address (likely for testing or administrative purposes, as real deposits often come from external sources).
+
+POST /transfer: Initiates a transfer of tokens from one address to another, taking details (from, to, amount) in the request body.
+
+GET /transactions/:address: Fetches the transaction history specifically involving a given wallet address.
+
+GET /transactions: Retrieves a list of all transactions recorded in the ledger.
+
+GET /ledger/stats: Provides overall statistics about the ledger (e.g., total supply, number of transactions).
+
+## Market Endpoints 📊
+GET /markets: Lists all available prediction markets.
+
+POST /markets: Creates a new prediction market, taking market details (question, options, resolution time) in the request body.
+
+GET /markets/:id: Retrieves the details and current state of a specific market identified by its ID.
+
+GET /leaderboard: Fetches a general leaderboard of users, likely based on prediction success or earnings.
+
+GET /leaderboard/:category: Fetches a leaderboard filtered by a specific category (e.g., sports, crypto).
+
+## Scraper Endpoint 🤖
+POST /scrape: Likely takes a URL in the request body, scrapes content from that URL, and automatically creates a new prediction market based on the scraped content.
+
+## Live Crypto Price Endpoints 📈
+GET /bitcoin-price: Fetches the current price of Bitcoin, probably by querying an external API like CoinGecko in real-time.
+
+GET /solana-price: Fetches the current price of Solana, also likely via an external API.
+
+## Live BTC Market Endpoint ⏱️
+GET /live-btc-market: Retrieves information about a specific, continuously updating prediction market related to Bitcoin's price (perhaps one created automatically based on live prices).
+
+## Betting Endpoints 🎰
+POST /bet: Allows a user to place a bet on a specific outcome within a market, taking details (market ID, user address, chosen option, amount) in the request body.
+
+POST /resolve/:market_id/:winning_option: An administrative endpoint used to manually resolve a prediction market, declaring the winning outcome and triggering the payout process.

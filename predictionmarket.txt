@@ -1,0 +1,88 @@
+📊 BlackBook Prediction Market - Database Design Context
+🎯 Core Principles for Database Schema Design
+Based on your requirements, we need to ensure our Supabase database schema strictly follows prediction market principles:
+
+🔒 Zero Protocol Risk (Constant Sum Formula)
+Database Implications:
+
+Market liquidity must always balance across all outcomes
+Share calculations must be deterministic and verifiable
+No fractional share creation that could lead to protocol debt
+Atomic bet placement to prevent race conditions
+⚡ Fast AMM Calculations (~0.1ms)
+Database Implications:
+
+Pre-computed price tables for instant lookups
+Minimal JOIN operations in critical paths
+Indexed calculations for real-time price updates
+Cached market state to avoid recalculation
+🔗 Balance Verification (Blockchain Integration)
+Database Implications:
+
+Transaction hash tracking for every bet
+Block number confirmation before finalizing bets
+Reconciliation tables for blockchain sync
+Rollback mechanisms for failed transactions
+🏗️ Clean Separation (Modular Design)
+Database Implications:
+
+Clear data ownership between on-chain and off-chain
+Event sourcing for audit trails
+State snapshots for quick recovery
+API-first design for external integrations
+🧮 Mathematical Constraints for Schema
+1. Constant Sum Market Maker (CSMM)
+2. Share Conservation
+3. Price Bounds (0 < price < 1)
+🚀 Performance Requirements
+Target Metrics:
+Market Creation: < 100ms
+Bet Placement: < 50ms
+Price Calculation: < 0.1ms
+Market Listing: < 200ms
+Real-time Updates: < 10ms latency
+Database Design Priorities:
+Read-Heavy Optimization (90% reads, 10% writes)
+Real-time Price Feeds (WebSocket subscriptions)
+Concurrent Bet Handling (ACID compliance)
+Historical Data Queries (Analytics & charts)
+🔐 Security & Integrity Constraints
+Blockchain Sync Requirements:
+Market State Machine:
+📊 Data Architecture Decisions
+What Goes On-Chain:
+✅ Bet transactions (amount, outcome, user)
+✅ Market resolutions (winning outcome)
+✅ Fund transfers (deposits, withdrawals)
+✅ Dispute resolutions (if implemented)
+What Stays Off-Chain (Supabase):
+✅ Market metadata (title, description, category)
+✅ User profiles (preferences, history)
+✅ Price calculations (cached for speed)
+✅ Analytics data (charts, statistics)
+✅ Real-time subscriptions (live updates)
+Hybrid Data (Both Layers):
+🔄 Market state (blockchain = source of truth)
+🔄 User balances (blockchain verified, DB cached)
+🔄 Bet history (blockchain immutable, DB queryable)
+🎯 Next Steps: Schema Implementation Strategy
+Phase 1: Core Tables ⏭️
+Phase 2: Performance Tables
+Phase 3: Advanced Features
+🔧 Technical Implementation Notes
+Database Triggers for CSMM:
+Auto-update market liquidity on every bet
+Recalculate prices when shares change
+Validate sum constraints before commits
+Sync blockchain state on confirmations
+Real-time Subscriptions:
+✅ Ready to Proceed?
+With this context established, we can now create a Supabase schema that:
+
+Maintains mathematical integrity (constant sum)
+Delivers sub-millisecond performance (cached calculations)
+Syncs perfectly with blockchain (verified balances)
+Scales cleanly (modular architecture)
+Next Action: Implement the Phase 1 core tables with all mathematical constraints and blockchain sync mechanisms built-in.
+
+Should we proceed with creating the mathematically-sound, performance-optimized Supabase schema?

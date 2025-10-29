@@ -1,0 +1,515 @@
+/* BlackBook Prediction Market - Main Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: #f0f2f5;
+    color: #1c1e21;
+    line-height: 1.34;
+}
+
+/* ======================
+   NAVIGATION HEADER
+   ====================== */
+.navbar {
+    background: #fff;
+    border-bottom: 1px solid #dadde1;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: bold;
+    color: #1877f2;
+    text-decoration: none;
+}
+
+.nav-tabs {
+    display: flex;
+    gap: 0;
+}
+
+.nav-tab {
+    padding: 18px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    color: #65676b;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+}
+
+.nav-tab.active {
+    color: #1877f2;
+    border-bottom-color: #1877f2;
+}
+
+.nav-tab:hover {
+    background: #f2f3f5;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.balance-display {
+    background: #e7f3ff;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    color: #1877f2;
+}
+
+.admin-button {
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.admin-button:hover {
+    background: #ee5a52;
+    transform: scale(1.05);
+}
+
+/* ======================
+   MAIN LAYOUT
+   ====================== */
+.main-container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+}
+
+/* ======================
+   LEFT SIDEBAR
+   ====================== */
+.left-sidebar {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    height: fit-content;
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.account-selector {
+    margin-bottom: 20px;
+}
+
+.account-selector h3 {
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: #1c1e21;
+}
+
+.account-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.account-btn {
+    padding: 10px 12px;
+    border: 2px solid #e4e6ea;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.account-btn:hover {
+    border-color: #1877f2;
+}
+
+.account-btn.active {
+    border-color: #1877f2;
+    background: #e7f3ff;
+    color: #1877f2;
+}
+
+.crypto-prices {
+    margin-top: 20px;
+}
+
+.crypto-prices h3 {
+    font-size: 16px;
+    margin-bottom: 15px;
+    color: #1c1e21;
+}
+
+.crypto-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #f7f8fa;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.crypto-name {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.crypto-price {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.price-up { color: #42b883; }
+.price-down { color: #e74c3c; }
+
+/* ======================
+   CENTER CONTENT
+   ====================== */
+.center-content {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.content-header {
+    padding: 20px;
+    border-bottom: 1px solid #e4e6ea;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.content-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.search-bar {
+    flex: 1;
+    max-width: 300px;
+    margin: 0 20px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 8px 16px;
+    border: 1px solid #ccd0d5;
+    border-radius: 20px;
+    background: #f0f2f5;
+    font-size: 15px;
+}
+
+.filter-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.filter-btn {
+    padding: 6px 12px;
+    border: 1px solid #ccd0d5;
+    border-radius: 6px;
+    background: #f0f2f5;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.filter-btn.active {
+    background: #1877f2;
+    color: #fff;
+    border-color: #1877f2;
+}
+
+/* ======================
+   MARKETS GRID - 3x3
+   ====================== */
+.markets-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 20px;
+    padding: 20px;
+    min-height: 600px;
+}
+
+.market-card {
+    border: 1px solid #e4e6ea;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.2s;
+    background: #fff;
+}
+
+.market-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,.12);
+    transform: translateY(-2px);
+}
+
+.market-header {
+    padding: 16px;
+    background: #f7f8fa;
+    border-bottom: 1px solid #e4e6ea;
+}
+
+.market-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #1c1e21;
+}
+
+.market-category {
+    font-size: 12px;
+    color: #65676b;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.market-body {
+    padding: 16px;
+}
+
+.market-description {
+    font-size: 14px;
+    color: #65676b;
+    margin-bottom: 16px;
+    line-height: 1.4;
+}
+
+/* ======================
+   BETTING CONTROLS
+   ====================== */
+.betting-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.outcome-btn {
+    padding: 12px;
+    border: 2px solid #e4e6ea;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.outcome-btn:hover {
+    border-color: #1877f2;
+    background: #f0f8ff;
+}
+
+.outcome-btn.selected {
+    border-color: #1877f2;
+    background: #1877f2;
+    color: #fff;
+}
+
+.bet-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.bet-amount-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ccd0d5;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.place-bet-btn {
+    padding: 8px 16px;
+    background: #42b883;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.place-bet-btn:hover {
+    background: #369870;
+}
+
+.place-bet-btn:disabled {
+    background: #ccd0d5;
+    cursor: not-allowed;
+}
+
+/* ======================
+   PAGINATION
+   ====================== */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    gap: 10px;
+}
+
+.pagination button {
+    padding: 8px 16px;
+    border: 1px solid #ccd0d5;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.pagination button:hover {
+    background: #f0f2f5;
+}
+
+.pagination button.active {
+    background: #1877f2;
+    color: #fff;
+    border-color: #1877f2;
+}
+
+.pagination button:disabled {
+    background: #f0f2f5;
+    color: #ccd0d5;
+    cursor: not-allowed;
+}
+
+/* ======================
+   TABS
+   ====================== */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* ======================
+   LOADING & ANIMATIONS
+   ====================== */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #1877f2;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ======================
+   TOAST NOTIFICATIONS
+   ====================== */
+.toast {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    padding: 16px 20px;
+    background: #42b883;
+    color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1001;
+    transform: translateX(400px);
+    transition: transform 0.3s ease;
+}
+
+.toast.show {
+    transform: translateX(0);
+}
+
+.toast.error {
+    background: #e74c3c;
+}
+
+/* ======================
+   RESPONSIVE DESIGN
+   ====================== */
+@media (max-width: 1024px) {
+    .main-container {
+        grid-template-columns: 250px 1fr;
+        gap: 15px;
+    }
+    .markets-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .main-container {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    .left-sidebar {
+        order: 2;
+    }
+    .markets-grid {
+        grid-template-columns: 1fr;
+        min-height: auto;
+    }
+    .nav-tabs {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .nav-tab {
+        padding: 12px 16px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-container {
+        flex-direction: column;
+        height: auto;
+        padding: 10px;
+        gap: 10px;
+    }
+    .nav-tabs {
+        order: 2;
+    }
+    .user-info {
+        order: 3;
+    }
+}
