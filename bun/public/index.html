@@ -3,132 +3,194 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlackBook - The DraftKings of Tech & Politics</title>
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/admin.css">
-    <link rel="stylesheet" href="/css/pages.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <title>🎯 BlackBook L1 Prediction Market</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="#" class="logo">
-                <i class="fas fa-chart-line"></i> BlackBook
-            </a>
-            
-            <div class="nav-tabs">
-                <button class="nav-tab active" data-nav="live" onclick="navigateTo('/')">
-                    <i class="fas fa-fire"></i> 🔴 LIVE BTC
-                </button>
-                <button class="nav-tab" data-nav="all-markets" onclick="navigateTo('/all-markets')">
-                    <i class="fas fa-store"></i> All Markets
-                </button>
-                <button class="nav-tab" data-nav="crypto" onclick="navigateTo('/crypto')">
-                    <i class="fab fa-bitcoin"></i> Crypto
-                </button>
-                <button class="nav-tab" data-nav="business" onclick="navigateTo('/business')">
-                    <i class="fas fa-briefcase"></i> Business
-                </button>
-                <button class="nav-tab" data-nav="tech" onclick="navigateTo('/tech')">
-                    <i class="fas fa-microchip"></i> Tech
-                </button>
-                <button class="nav-tab" data-nav="recipes" onclick="navigateTo('/recipes')">
-                    <i class="fas fa-receipt"></i> Recipes
-                </button>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1>🎯 BlackBook L1</h1>
+                <div class="network-info">
+                    <span class="network-badge">🔗 Layer 1 Blockchain</span>
+                    <span class="token-badge">💎 BB Token</span>
+                    <span class="accounts-badge">📊 8 Test Accounts</span>
+                </div>
             </div>
-
-            <div class="user-info">
-                <button class="admin-button" onclick="openAdminPanel()">
-                    <i class="fas fa-cog"></i> Admin
-                </button>
-                <button class="admin-button" onclick="openEventCreator()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin-left: 10px;">
-                    <i class="fas fa-plus"></i> Add Event
-                </button>
+            <div class="header-right">
+                <button id="adminBtn" class="admin-button">👑 Admin Panel</button>
             </div>
-        </div>
-    </nav>
+        </header>
 
-    <!-- Main Container -->
-    <div class="main-container">
-        <!-- Left Sidebar -->
-        <div class="left-sidebar">
-            <!-- Selected Account Display -->
-            <div id="selectedAccountDisplay" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 20px; margin-bottom: 20px; color: white; display: none;">
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                    <i class="fas fa-user-circle" style="font-size: 32px;"></i>
-                    <div>
-                        <div style="font-size: 11px; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px;">Active Account</div>
-                        <div id="selectedAccountName" style="font-size: 20px; font-weight: 700;">No Account Selected</div>
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h3>🏦 L1 Accounts</h3>
+                    <div id="accountsList" class="accounts-list">
+                        <!-- Accounts will be populated by JS -->
                     </div>
                 </div>
-                <div style="background: rgba(255,255,255,0.2); border-radius: 8px; padding: 12px; backdrop-filter: blur(10px);">
-                    <div style="font-size: 12px; opacity: 0.9; margin-bottom: 4px;">Balance</div>
-                    <div id="selectedAccountBalance" style="font-size: 28px; font-weight: 700;">0 BB</div>
+
+                <div class="sidebar-section">
+                    <h3>📊 Selected Account</h3>
+                    <div class="selected-account">
+                        <select id="accountSelect" class="account-select">
+                            <option value="">Select Account</option>
+                        </select>
+                        <div id="accountInfo" class="account-info">
+                            <div class="account-detail">
+                                <span class="label">Address:</span>
+                                <span id="selectedAddress" class="value">--</span>
+                            </div>
+                            <div class="account-detail">
+                                <span class="label">Balance:</span>
+                                <span id="selectedBalance" class="value">0 BB</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
+                <div class="sidebar-section">
+                    <h3>📈 Market Prices</h3>
+                    <div class="price-feed">
+                        <div class="price-item">
+                            <span class="crypto-name">Bitcoin</span>
+                            <span id="btcPrice" class="price">$--</span>
+                        </div>
+                        <div class="price-item">
+                            <span class="crypto-name">Solana</span>
+                            <span id="solPrice" class="price">$--</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center Content -->
+            <main class="center-content">
+                <!-- Prediction Markets -->
+                <section class="markets-section">
+                    <h2>📊 Active Prediction Markets</h2>
+                    <div id="marketsList" class="markets-grid">
+                        <!-- Markets will be populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Betting Panel -->
+                <section class="betting-section">
+                    <h2>🎯 Place Bet</h2>
+                    <div class="betting-panel">
+                        <div class="bet-form">
+                            <div class="form-group">
+                                <label>Market</label>
+                                <select id="marketSelect" class="market-select">
+                                    <option value="">Select Market</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Bet Amount (BB)</label>
+                                <input type="number" id="betAmount" class="bet-amount" min="1" step="1" placeholder="Enter amount">
+                                <div class="quick-amounts">
+                                    <button class="quick-bet" data-amount="10">10 BB</button>
+                                    <button class="quick-bet" data-amount="50">50 BB</button>
+                                    <button class="quick-bet" data-amount="100">100 BB</button>
+                                    <button class="quick-bet" data-amount="250">250 BB</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Prediction</label>
+                                <div class="outcome-buttons">
+                                    <button id="higherBtn" class="outcome-btn higher" data-outcome="YES">📈 YES</button>
+                                    <button id="lowerBtn" class="outcome-btn lower" data-outcome="NO">📉 NO</button>
+                                </div>
+                            </div>
+
+                            <button id="placeBetBtn" class="place-bet-btn" disabled>Place Bet</button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <!-- Right Sidebar -->
+            <aside class="right-sidebar">
+                <!-- Debug Console -->
+                <section class="debug-section">
+                    <div class="debug-header">
+                        <h3>🐛 Debug Console</h3>
+                        <button id="clearConsole" class="clear-btn">Clear</button>
+                    </div>
+                    <div id="debugConsole" class="debug-console">
+                        <div class="console-message">Console ready...</div>
+                    </div>
+                </section>
+
+                <!-- Stats Panel -->
+                <section class="stats-section">
+                    <h3>📊 Network Stats</h3>
+                    <div id="networkStats" class="network-stats">
+                        <!-- Stats will be populated by JS -->
+                    </div>
+                </section>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Admin Panel Modal -->
+    <div id="adminModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>👑 God Mode Admin Panel</h2>
+                <button id="closeAdminModal" class="close-btn">&times;</button>
             </div>
             
-            <!-- Live Prices -->
-            <div class="crypto-prices">
-                <h3><i class="fas fa-chart-line"></i> Live Prices</h3>
-                <div class="crypto-item">
-                    <div class="crypto-name">Bitcoin</div>
-                    <div class="crypto-price" id="btcPrice">Loading...</div>
+            <div class="admin-content">
+                <div class="admin-section">
+                    <h3>🏦 All L1 Accounts</h3>
+                    <div id="adminAccountsList" class="admin-accounts">
+                        <!-- Will be populated by JS -->
+                    </div>
                 </div>
-                <div class="crypto-item">
-                    <div class="crypto-name">Solana</div>
-                    <div class="crypto-price" id="solPrice">Loading...</div>
+                
+                <div class="admin-section">
+                    <h3>💰 Admin Actions</h3>
+                    <div class="admin-actions">
+                        <div class="action-group">
+                            <label>Deposit BB to Account:</label>
+                            <select id="adminDepositAccount" class="admin-select">
+                                <option value="">Select Account</option>
+                            </select>
+                            <input id="adminDepositAmount" type="number" placeholder="Amount" min="1" step="0.01" class="admin-input">
+                            <button id="adminDepositBtn" class="admin-btn">💎 Deposit</button>
+                        </div>
+                        
+                        <div class="action-group">
+                            <label>Transfer Between Accounts:</label>
+                            <select id="adminTransferFrom" class="admin-select">
+                                <option value="">From Account</option>
+                            </select>
+                            <select id="adminTransferTo" class="admin-select">
+                                <option value="">To Account</option>
+                            </select>
+                            <input id="adminTransferAmount" type="number" placeholder="Amount" min="0.01" step="0.01" class="admin-input">
+                            <button id="adminTransferBtn" class="admin-btn">🔄 Transfer</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="crypto-item">
-                    <div class="crypto-name">Blackbook</div>
-                    <div class="crypto-price" id="bbPrice">$0.01</div>
-                </div>
-            </div>
-            
-            <!-- Debug Console -->
-            <div style="background: #1e1e1e; border-radius: 12px; padding: 15px; margin-top: 20px; border: 2px solid #333; display: flex; flex-direction: column; height: 350px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #333; padding-bottom: 10px;">
-                    <h3 style="color: #00ff00; font-size: 14px; font-weight: 700; margin: 0; font-family: 'Courier New', monospace;">
-                        <i class="fas fa-bug"></i> Debug Console
-                    </h3>
-                    <button onclick="clearDebugConsole()" style="background: #333; color: #00ff00; border: 1px solid #555; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 600;">
-                        Clear
-                    </button>
-                </div>
-                <div id="debugConsoleOutput" style="flex: 1; overflow-y: auto; background: #0a0a0a; border: 1px solid #333; border-radius: 6px; padding: 10px; font-family: 'Courier New', monospace; font-size: 11px; color: #00ff00; white-space: pre-wrap; word-wrap: break-word;">
-                    <div style="color: #888;">Console ready...</div>
-                </div>
-                <div style="margin-top: 8px; font-size: 10px; color: #666; font-family: 'Courier New', monospace;">
-                    Logs: <span id="logCount" style="color: #00ff00;">0</span>
+                
+                <div class="admin-section">
+                    <h3>📊 System Stats</h3>
+                    <div id="adminStats" class="admin-stats">
+                        <!-- Will be populated by JS -->
+                    </div>
                 </div>
             </div>
         </div>
-
-        <!-- Center Content -->
-        <div class="center-content">
-            <div id="mainContent">
-                <!-- Pages will be dynamically rendered here by the router -->
-            </div>
-        </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div id="toast" class="toast">
-        <span id="toastMessage"></span>
-    </div>
-
-    <!-- Admin Modal -->
-    <div id="adminModal" class="admin-modal">
-        <div class="admin-panel" style="max-width: 1000px;">
-            <div class="admin-header">
-                <h2><i class="fas fa-crown"></i> 👑 GOD MODE - 8 Accounts</h2>
-                <button class="close-btn" onclick="closeAdminPanel()">&times;</button>
-            </div>
-            <div id="adminContent"></div>
-        </div>
-    </div>
-    
-    <script src="/main.js" type="module"></script>
+    <script type="module" src="../dist/main.js"></script>
 </body>
 </html>

@@ -1,23 +1,20 @@
 {
-  "name": "blackbook-frontend",
+  "name": "blackbook-desktop",
   "version": "1.0.0",
-  "description": "BlackBook Prediction Market Frontend - Built with Bun",
-  "main": "src/server.ts",
+  "description": "BlackBook L1 Prediction Market Desktop App",
   "type": "module",
   "scripts": {
-    "dev": "bun run --watch src/server.ts",
-    "build": "bun build src/main.ts --outdir public/dist --target browser --minify",
-    "start": "bun run src/server.ts",
-    "type-check": "tsc --noEmit"
-  },
-  "dependencies": {
-    "chart.js": "^4.4.0"
+    "dev": "bun run dev:server",
+    "dev:server": "python3 -m http.server 8082 -d public",
+    "build": "bun build src/main.ts --outdir dist",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "devDependencies": {
+    "@tauri-apps/api": "^1.5.3",
+    "@tauri-apps/cli": "^1.5.10",
     "@types/bun": "latest",
-    "typescript": "latest"
-  },
-  "engines": {
-    "bun": ">=1.0.0"
+    "typescript": "^5.3.3"
   }
 }

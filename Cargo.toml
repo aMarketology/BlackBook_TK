@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "blackBook",
+    "bun/src-tauri"
+]
+
+[workspace.package]
+edition = "2021"

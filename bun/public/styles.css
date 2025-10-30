@@ -1,0 +1,991 @@
+/* ============================================================================
+   🎯 BlackBook L1 - Death Note Inspired Prediction Market UI
+   A dark, supernatural aesthetic with gothic typography and deadly elegance
+   ============================================================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Death Note Black Color Palette */
+    --death-black: #0a0a0a;
+    --deep-black: #1a1a1a;
+    --charcoal: #2a2a2a;
+    --dark-gray: #3a3a3a;
+    --medium-gray: #555555;
+    --light-gray: #888888;
+    
+    /* Death Note Accent Colors */
+    --death-red: #e63946;      /* Ryuk's red eyes */
+    --blood-red: #d62828;
+    --gold-accent: #d4a574;    /* Notebook pages */
+    --page-yellow: #f5deb3;    /* Paper effect */
+    --white-text: #f0f0f0;
+    --pale-text: #c0c0c0;
+    
+    /* Supernatural Effects */
+    --glow-red: rgba(230, 57, 70, 0.3);
+    --glow-gold: rgba(212, 165, 116, 0.2);
+    --shadow-deep: 0 20px 60px rgba(0, 0, 0, 0.9);
+    --shadow-medium: 0 10px 30px rgba(0, 0, 0, 0.7);
+    --shadow-light: 0 5px 15px rgba(0, 0, 0, 0.5);
+    
+    /* Fonts */
+    --font-main: 'Georgia', 'Times New Roman', serif;
+    --font-title: 'Georgia', serif;
+    --font-mono: 'Courier New', monospace;
+}
+
+/* ============================================================================
+   GLOBAL STYLES
+   ============================================================================ */
+
+html, body {
+    font-family: var(--font-main);
+    background: var(--death-black);
+    color: var(--white-text);
+    overflow: hidden;
+}
+
+body {
+    position: relative;
+}
+
+/* Animated background effect */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at center, rgba(230, 57, 70, 0.05) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 1;
+    animation: subtle-pulse 6s ease-in-out infinite;
+}
+
+@keyframes subtle-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.3; }
+}
+
+/* ============================================================================
+   TYPOGRAPHY & TEXT EFFECTS
+   ============================================================================ */
+
+h1, h2, h3 {
+    font-family: var(--font-title);
+    text-shadow: 0 0 20px rgba(230, 57, 70, 0.3), 2px 2px 4px rgba(0, 0, 0, 0.8);
+    letter-spacing: 2px;
+}
+
+h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--page-yellow);
+    text-transform: uppercase;
+}
+
+h2 {
+    font-size: 1.8rem;
+    color: var(--gold-accent);
+    margin: 16px 0 12px 0;
+}
+
+h3 {
+    font-size: 1.2rem;
+    color: var(--pale-text);
+    letter-spacing: 1px;
+}
+
+/* ============================================================================
+   APP CONTAINER
+   ============================================================================ */
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100vh;
+    background: linear-gradient(135deg, var(--death-black) 0%, var(--charcoal) 100%);
+    position: relative;
+    z-index: 2;
+}
+
+/* ============================================================================
+   HEADER
+   ============================================================================ */
+
+.header {
+    background: linear-gradient(to bottom, var(--charcoal), var(--deep-black));
+    border-bottom: 2px solid var(--death-red);
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow-medium), inset 0 1px 0 rgba(212, 165, 116, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold-accent), transparent);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.network-info {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.network-badge, .token-badge, .accounts-badge {
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    background: rgba(230, 57, 70, 0.15);
+    border: 1px solid var(--death-red);
+    color: var(--page-yellow);
+    font-weight: 600;
+    letter-spacing: 1px;
+    box-shadow: 0 0 10px rgba(230, 57, 70, 0.2);
+}
+
+.network-badge:hover, .token-badge:hover, .accounts-badge:hover {
+    box-shadow: 0 0 20px rgba(230, 57, 70, 0.4);
+    transform: translateY(-2px);
+}
+
+.admin-button {
+    background: linear-gradient(135deg, var(--death-red), var(--blood-red));
+    border: none;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 1px;
+    box-shadow: 0 0 15px rgba(230, 57, 70, 0.4), var(--shadow-light);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    text-transform: uppercase;
+}
+
+.admin-button:hover {
+    box-shadow: 0 0 30px rgba(230, 57, 70, 0.8), var(--shadow-medium);
+    transform: translateY(-3px) scale(1.05);
+}
+
+.admin-button:active {
+    transform: translateY(-1px) scale(1.02);
+}
+
+/* ============================================================================
+   MAIN CONTENT LAYOUT
+   ============================================================================ */
+
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    gap: 2px;
+    background: linear-gradient(to right, var(--deep-black), var(--charcoal));
+}
+
+/* ============================================================================
+   SIDEBAR
+   ============================================================================ */
+
+.sidebar {
+    width: 320px;
+    background: linear-gradient(180deg, var(--charcoal) 0%, var(--deep-black) 100%);
+    border-right: 2px solid var(--death-red);
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    box-shadow: inset -10px 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.sidebar-section {
+    background: rgba(42, 42, 42, 0.5);
+    border: 1px solid rgba(230, 57, 70, 0.2);
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 0 20px rgba(230, 57, 70, 0.1);
+}
+
+.sidebar-section h3 {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+    color: var(--gold-accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Accounts List */
+.accounts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.account-item {
+    padding: 10px 12px;
+    background: rgba(230, 57, 70, 0.1);
+    border: 1px solid rgba(230, 57, 70, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--page-yellow);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.account-item:hover {
+    background: rgba(230, 57, 70, 0.2);
+    border-color: var(--death-red);
+    transform: translateX(4px);
+}
+
+/* Account Select */
+.account-select {
+    width: 100%;
+    padding: 10px;
+    background: var(--deep-black);
+    border: 2px solid var(--death-red);
+    border-radius: 4px;
+    color: var(--page-yellow);
+    font-family: var(--font-main);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.account-select:focus {
+    outline: none;
+    box-shadow: 0 0 15px rgba(230, 57, 70, 0.4);
+}
+
+.account-select option {
+    background: var(--charcoal);
+    color: var(--page-yellow);
+}
+
+/* Account Info */
+.selected-account {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.account-info {
+    background: linear-gradient(135deg, rgba(230, 57, 70, 0.1), transparent);
+    border: 1px solid var(--death-red);
+    border-radius: 6px;
+    padding: 12px;
+    box-shadow: 0 0 15px rgba(230, 57, 70, 0.2);
+}
+
+.account-detail {
+    display: flex;
+    justify-content: space-between;
+    margin: 8px 0;
+    font-size: 0.9rem;
+}
+
+.account-detail .label {
+    color: var(--light-gray);
+    font-weight: 600;
+}
+
+.account-detail .value {
+    color: var(--page-yellow);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    word-break: break-all;
+}
+
+/* Market Prices */
+.market-prices {
+    background: linear-gradient(135deg, rgba(212, 165, 116, 0.1), transparent);
+    border: 1px solid var(--gold-accent);
+    border-radius: 6px;
+    padding: 12px;
+    box-shadow: 0 0 15px rgba(212, 165, 116, 0.15);
+}
+
+.price-header {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--light-gray);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 8px 0;
+    padding: 6px 0;
+    border-bottom: 1px dotted rgba(212, 165, 116, 0.2);
+}
+
+.price-row:last-child {
+    border-bottom: none;
+}
+
+.price-symbol {
+    font-weight: 700;
+    color: var(--gold-accent);
+    font-family: var(--font-mono);
+}
+
+.price-value {
+    color: var(--page-yellow);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+/* Network Stats */
+.network-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.stat-item {
+    background: rgba(230, 57, 70, 0.1);
+    border: 1px solid rgba(230, 57, 70, 0.2);
+    border-radius: 4px;
+    padding: 8px;
+    text-align: center;
+}
+
+.stat-label {
+    color: var(--light-gray);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    color: var(--death-red);
+    font-size: 1.2rem;
+    font-weight: 700;
+    display: block;
+    margin-top: 4px;
+}
+
+/* ============================================================================
+   CENTER CONTENT AREA
+   ============================================================================ */
+
+.center-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--deep-black);
+    overflow-y: auto;
+}
+
+/* Markets Section */
+.markets-section {
+    padding: 20px;
+    border-bottom: 1px solid rgba(230, 57, 70, 0.2);
+}
+
+.markets-section h2 {
+    margin-bottom: 16px;
+}
+
+.markets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.market-card {
+    background: linear-gradient(135deg, var(--charcoal), var(--dark-gray));
+    border: 1px solid var(--death-red);
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 0 15px rgba(230, 57, 70, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.market-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(230, 57, 70, 0.1) 0%, transparent 70%);
+    transition: all 0.3s;
+}
+
+.market-card:hover {
+    border-color: var(--gold-accent);
+    transform: translateY(-4px);
+    box-shadow: 0 0 30px rgba(230, 57, 70, 0.4), 0 0 20px rgba(212, 165, 116, 0.2);
+}
+
+.market-card:hover::before {
+    top: 0;
+    right: 0;
+}
+
+.market-title {
+    color: var(--gold-accent);
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.market-description {
+    color: var(--pale-text);
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+.market-prices {
+    display: flex;
+    gap: 12px;
+    margin: 12px 0;
+}
+
+.price-option {
+    flex: 1;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+    font-weight: 700;
+}
+
+.price-option.yes {
+    background: rgba(39, 174, 96, 0.2);
+    border: 1px solid rgba(39, 174, 96, 0.4);
+    color: #2bbb3d;
+}
+
+.price-option.no {
+    background: rgba(230, 57, 70, 0.2);
+    border: 1px solid rgba(230, 57, 70, 0.4);
+    color: var(--death-red);
+}
+
+.option-price {
+    font-size: 1.2rem;
+    margin-top: 4px;
+}
+
+/* Betting Panel */
+.betting-panel {
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(230, 57, 70, 0.1), transparent);
+    border: 1px solid var(--death-red);
+    border-radius: 8px;
+    box-shadow: var(--shadow-medium);
+}
+
+.betting-panel h3 {
+    margin-bottom: 16px;
+    color: var(--gold-accent);
+}
+
+.betting-controls {
+    display: grid;
+    gap: 12px;
+}
+
+.control-group {
+    display: flex;
+    gap: 8px;
+}
+
+.control-group button {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid rgba(230, 57, 70, 0.5);
+    background: var(--charcoal);
+    color: var(--page-yellow);
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 700;
+    transition: all 0.2s;
+    font-size: 0.95rem;
+}
+
+.control-group button:hover {
+    border-color: var(--death-red);
+    background: rgba(230, 57, 70, 0.15);
+}
+
+.control-group button.selected {
+    background: var(--death-red);
+    border-color: var(--blood-red);
+    color: white;
+    box-shadow: 0 0 15px rgba(230, 57, 70, 0.5);
+}
+
+.amount-input {
+    width: 100%;
+    padding: 12px;
+    background: var(--charcoal);
+    border: 2px solid var(--death-red);
+    border-radius: 6px;
+    color: var(--page-yellow);
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.amount-input:focus {
+    outline: none;
+    box-shadow: 0 0 15px rgba(230, 57, 70, 0.4);
+}
+
+.bet-button {
+    background: linear-gradient(135deg, var(--death-red), var(--blood-red));
+    border: none;
+    color: white;
+    padding: 14px 20px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.3s;
+    box-shadow: 0 0 20px rgba(230, 57, 70, 0.3);
+    text-transform: uppercase;
+}
+
+.bet-button:hover:not(:disabled) {
+    box-shadow: 0 0 30px rgba(230, 57, 70, 0.6);
+    transform: translateY(-2px);
+}
+
+.bet-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Debug Console */
+.debug-console {
+    background: var(--death-black);
+    border: 1px solid var(--death-red);
+    border-radius: 6px;
+    padding: 12px;
+    height: 150px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.8);
+}
+
+.console-message {
+    padding: 4px 0;
+    color: var(--pale-text);
+    line-height: 1.4;
+}
+
+.console-message.error {
+    color: var(--death-red);
+    font-weight: 700;
+}
+
+.console-message.success {
+    color: #2bbb3d;
+    font-weight: 700;
+}
+
+.console-message.info {
+    color: var(--gold-accent);
+}
+
+.clear-button {
+    background: var(--charcoal);
+    border: 1px solid var(--death-red);
+    color: var(--page-yellow);
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 8px;
+    transition: all 0.2s;
+}
+
+.clear-button:hover {
+    background: rgba(230, 57, 70, 0.2);
+    border-color: var(--gold-accent);
+}
+
+/* ============================================================================
+   MODAL - ADMIN PANEL
+   ============================================================================ */
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 10, 10, 0.95);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeInDark 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes fadeInDark {
+    from {
+        opacity: 0;
+        filter: blur(5px);
+    }
+    to {
+        opacity: 1;
+        filter: blur(0);
+    }
+}
+
+.modal-content {
+    background: linear-gradient(135deg, var(--charcoal), var(--deep-black));
+    border: 2px solid var(--death-red);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 1000px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-deep), 0 0 40px rgba(230, 57, 70, 0.4);
+    animation: slideUpDark 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideUpDark {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 28px;
+    border-bottom: 2px solid var(--death-red);
+    background: linear-gradient(135deg, var(--death-red), var(--blood-red));
+    border-radius: 10px 10px 0 0;
+}
+
+.modal-header h2 {
+    color: white;
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    text-transform: uppercase;
+}
+
+.close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid white;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    font-weight: 700;
+}
+
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg) scale(1.1);
+}
+
+.admin-content {
+    padding: 28px;
+    display: grid;
+    gap: 28px;
+}
+
+.admin-section {
+    background: linear-gradient(135deg, rgba(230, 57, 70, 0.1), transparent);
+    border: 1px solid var(--death-red);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 0 20px rgba(230, 57, 70, 0.2);
+}
+
+.admin-section h3 {
+    color: var(--gold-accent);
+    font-size: 1.3rem;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.admin-accounts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 14px;
+}
+
+.admin-account-card {
+    background: var(--charcoal);
+    border: 1px solid rgba(230, 57, 70, 0.3);
+    border-radius: 6px;
+    padding: 14px;
+    transition: all 0.2s;
+}
+
+.admin-account-card:hover {
+    border-color: var(--death-red);
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px rgba(230, 57, 70, 0.3);
+}
+
+.admin-account-name {
+    color: var(--gold-accent);
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.admin-account-address {
+    color: var(--pale-text);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    margin-bottom: 8px;
+    word-break: break-all;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    border-left: 2px solid var(--death-red);
+    padding-left: 8px;
+}
+
+.admin-account-balance {
+    color: var(--page-yellow);
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+.admin-actions {
+    display: grid;
+    gap: 16px;
+}
+
+.action-group {
+    background: var(--charcoal);
+    border: 1px solid rgba(230, 57, 70, 0.2);
+    border-radius: 6px;
+    padding: 16px;
+}
+
+.action-group label {
+    color: var(--page-yellow);
+    font-weight: 700;
+    display: block;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.admin-select, #adminDepositAmount, #adminTransferAmount {
+    background: var(--deep-black);
+    border: 2px solid var(--death-red);
+    border-radius: 4px;
+    color: var(--page-yellow);
+    padding: 10px;
+    margin: 6px 8px 6px 0;
+    font-family: var(--font-main);
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.admin-select:focus, #adminDepositAmount:focus, #adminTransferAmount:focus {
+    outline: none;
+    border-color: var(--gold-accent);
+    box-shadow: 0 0 15px rgba(230, 57, 70, 0.3);
+}
+
+.admin-select option {
+    background: var(--charcoal);
+    color: var(--page-yellow);
+}
+
+.admin-btn {
+    background: linear-gradient(135deg, var(--death-red), var(--blood-red));
+    border: none;
+    border-radius: 6px;
+    color: white;
+    padding: 10px 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.admin-btn:hover {
+    box-shadow: 0 0 20px rgba(230, 57, 70, 0.5);
+    transform: translateY(-2px);
+}
+
+.admin-btn:active {
+    transform: translateY(0);
+}
+
+.admin-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+}
+
+.admin-stat-card {
+    background: var(--charcoal);
+    border: 1px solid rgba(212, 165, 116, 0.3);
+    border-radius: 6px;
+    padding: 16px;
+    text-align: center;
+    box-shadow: 0 0 10px rgba(212, 165, 116, 0.1);
+}
+
+.admin-stat-label {
+    color: var(--light-gray);
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.admin-stat-value {
+    color: var(--gold-accent);
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+/* ============================================================================
+   SCROLLBAR STYLING
+   ============================================================================ */
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--deep-black);
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, var(--death-red), var(--gold-accent));
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(230, 57, 70, 0.3);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(to bottom, var(--blood-red), var(--page-yellow));
+    box-shadow: 0 0 15px rgba(230, 57, 70, 0.5);
+}
+
+/* ============================================================================
+   UTILITY CLASSES & RESPONSIVE
+   ============================================================================ */
+
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 280px;
+    }
+    
+    .markets-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: 200px;
+        border-right: none;
+        border-bottom: 2px solid var(--death-red);
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+    }
+    
+    h1 {
+        font-size: 1.8rem;
+    }
+    
+    .modal-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+}
+
+@media (max-width: 480px) {
+    .header {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .network-info {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .admin-accounts {
+        grid-template-columns: 1fr;
+    }
+    
+    h1 {
+        font-size: 1.4rem;
+    }
+}

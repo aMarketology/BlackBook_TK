@@ -1,0 +1,9 @@
+/Users/thelegendofzjui/Documents/GitHub/Black_Book/blackBook/target/debug/deps/quick_protobuf_codec-4c51e3788397a4d7.d: /Users/thelegendofzjui/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-codec-0.3.1/src/lib.rs /Users/thelegendofzjui/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-codec-0.3.1/src/generated/mod.rs /Users/thelegendofzjui/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-codec-0.3.1/src/generated/test.rs
+
+/Users/thelegendofzjui/Documents/GitHub/Black_Book/blackBook/target/debug/deps/libquick_protobuf_codec-4c51e3788397a4d7.rlib: /Users/thelegendofzjui/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-codec-0.3.1/src/lib.rs /Users/thelegendofzjui/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-codec-0.3.1/src/generated/mod.rs /Users/thelegendofzjui/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-codec-0.3.1/src/generated/test.rs
+
+/Users/thelegendofzjui/Documents/GitHub/Black_Book/blackBook/target/debug/deps/libquick_protobuf_codec-4c51e3788397a4d7.rmeta: /Users/thelegendofzjui/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-codec-0.3.1/src/lib.rs /Users/thelegendofzjui/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-codec-0.3.1/src/generated/mod.rs /Users/thelegendofzjui/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-codec-0.3.1/src/generated/test.rs
+
+/Users/thelegendofzjui/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-codec-0.3.1/src/lib.rs:
+/Users/thelegendofzjui/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-codec-0.3.1/src/generated/mod.rs:
+/Users/thelegendofzjui/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-codec-0.3.1/src/generated/test.rs:
