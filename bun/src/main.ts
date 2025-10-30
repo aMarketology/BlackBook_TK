@@ -1,5 +1,29 @@
 import { invoke } from '@tauri-apps/api/tauri';
-import { getPrices, formatPrice } from './lib/prices';
+import { getPricesasync function loadMarkets() {
+    try {
+        log('📊 Loading prediction markets...');
+        allMarkets = await invoke('get_markets') as MarketInfo[];
+        log(`✅ Loaded ${allMarkets.length} active markets`, 'success');
+        
+        renderMarketsList();
+        renderMarketSelect();
+    } catch (error) {
+        log(`Markets fetch failed: ${error}`, 'error');
+    }
+}
+
+async function loadPolymarketEvents() {
+    try {
+        log('🔮 Fetching real Polymarket events...');
+        polymarketEvents = await getPolymarketEvents();
+        log(`✅ Loaded ${polymarketEvents.length} Polymarket events`, 'success');
+        
+        renderPolymarketEvents();
+    } catch (error) {
+        log(`❌ Polymarket fetch failed: ${error}`, 'error');
+    }
+}e } from './lib/prices';
+import { getPolymarketEvents, formatVolume, getPriceColor, getPriceLabel, type PolymarketMarket } from './lib/polymarket';
 
 interface AccountInfo {
     name: string;
@@ -23,6 +47,7 @@ interface MarketInfo {
 let selectedAccount: AccountInfo | null = null;
 let allAccounts: AccountInfo[] = [];
 let allMarkets: MarketInfo[] = [];
+let polymarketEvents: PolymarketMarket[] = [];
 let selectedMarket: MarketInfo | null = null;
 let selectedOutcome: 'YES' | 'NO' | null = null;
 

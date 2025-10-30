@@ -22,7 +22,10 @@
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "com.blackbook.app"
+      "identifier": "com.blackbook.app",
+      "icon": [
+        "icons/icon.png"
+      ]
     },
     "security": {
       "csp": null
@@ -32,8 +35,8 @@
         "fullscreen": false,
         "resizable": true,
         "title": "BlackBook L1 Prediction Market",
-        "width": 1600,
-        "height": 1000
+        "width": 1200,
+        "height": 800
       }
     ]
   }
