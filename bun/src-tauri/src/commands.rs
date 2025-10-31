@@ -1,12 +1,10 @@
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::State;
 use blackbook_prediction_market::ledger::{Ledger, Recipe, Transaction};
 
 /// Application state holding the blockchain ledger
-pub struct AppState {
-    pub ledger: Mutex<Ledger>,
-}
+pub type AppState = Arc<Mutex<Ledger>>;
 
 /// DTO for bet placement request
 #[derive(Debug, Deserialize)]
@@ -43,7 +41,7 @@ pub struct AccountInfo {
 /// Get all accounts with their addresses and balances
 #[tauri::command]
 pub fn get_accounts(state: State<AppState>) -> Result<Vec<AccountInfo>, String> {
-    let ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let ledger = state.lock().map_err(|e| e.to_string())?;
     
     let mut accounts = Vec::new();
     
@@ -65,14 +63,14 @@ pub fn get_accounts(state: State<AppState>) -> Result<Vec<AccountInfo>, String> 
 /// Get balance for a specific account
 #[tauri::command]
 pub fn get_balance(address: String, state: State<AppState>) -> Result<f64, String> {
-    let ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let ledger = state.lock().map_err(|e| e.to_string())?;
     Ok(ledger.get_balance(&address))
 }
 
 /// Place a bet on a market
 #[tauri::command]
 pub fn place_bet(req: BetRequest, state: State<AppState>) -> Result<String, String> {
-    let mut ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let mut ledger = state.lock().map_err(|e| e.to_string())?;
     
     let market_id = format!("{}_{}", req.market_id, req.prediction);
     ledger.place_bet(&req.account, &market_id, req.amount)
@@ -81,56 +79,56 @@ pub fn place_bet(req: BetRequest, state: State<AppState>) -> Result<String, Stri
 /// Transfer tokens between accounts
 #[tauri::command]
 pub fn transfer(req: TransferRequest, state: State<AppState>) -> Result<String, String> {
-    let mut ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let mut ledger = state.lock().map_err(|e| e.to_string())?;
     ledger.transfer(&req.from, &req.to, req.amount)
 }
 
 /// Admin: Add tokens to an account
 #[tauri::command]
 pub fn admin_deposit(req: DepositRequest, state: State<AppState>) -> Result<String, String> {
-    let mut ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let mut ledger = state.lock().map_err(|e| e.to_string())?;
     ledger.add_tokens(&req.address, req.amount)
 }
 
 /// Get all transactions in the ledger
 #[tauri::command]
 pub fn get_all_transactions(state: State<AppState>) -> Result<Vec<Transaction>, String> {
-    let ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let ledger = state.lock().map_err(|e| e.to_string())?;
     Ok(ledger.get_all_transactions())
 }
 
 /// Get transactions for a specific account
 #[tauri::command]
 pub fn get_account_transactions(address: String, state: State<AppState>) -> Result<Vec<Transaction>, String> {
-    let ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let ledger = state.lock().map_err(|e| e.to_string())?;
     Ok(ledger.get_account_transactions(&address))
 }
 
 /// Get all activity recipes
 #[tauri::command]
 pub fn get_recipes(state: State<AppState>) -> Result<Vec<Recipe>, String> {
-    let ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let ledger = state.lock().map_err(|e| e.to_string())?;
     Ok(ledger.get_recipes_sorted())
 }
 
 /// Get recipes for a specific account
 #[tauri::command]
 pub fn get_account_recipes(address: String, state: State<AppState>) -> Result<Vec<Recipe>, String> {
-    let ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let ledger = state.lock().map_err(|e| e.to_string())?;
     Ok(ledger.get_account_recipes_sorted(&address))
 }
 
 /// Get recipes by type
 #[tauri::command]
 pub fn get_recipes_by_type(recipe_type: String, state: State<AppState>) -> Result<Vec<Recipe>, String> {
-    let ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let ledger = state.lock().map_err(|e| e.to_string())?;
     Ok(ledger.get_recipes_by_type(&recipe_type))
 }
 
 /// Get ledger statistics
 #[tauri::command]
 pub fn get_stats(state: State<AppState>) -> Result<serde_json::Value, String> {
-    let ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let ledger = state.lock().map_err(|e| e.to_string())?;
     let stats = ledger.get_stats();
     Ok(serde_json::to_value(stats).map_err(|e| e.to_string())?)
 }
@@ -138,7 +136,7 @@ pub fn get_stats(state: State<AppState>) -> Result<serde_json::Value, String> {
 /// Record a bet win for an account
 #[tauri::command]
 pub fn record_bet_win(address: String, amount: f64, bet_id: String, state: State<AppState>) -> Result<String, String> {
-    let mut ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let mut ledger = state.lock().map_err(|e| e.to_string())?;
     ledger.record_bet_win(&address, amount, &bet_id);
     Ok(format!("Recorded win of {} BB for {} on bet {}", amount, address, bet_id))
 }
@@ -146,7 +144,7 @@ pub fn record_bet_win(address: String, amount: f64, bet_id: String, state: State
 /// Record a bet loss for an account
 #[tauri::command]
 pub fn record_bet_loss(address: String, amount: f64, bet_id: String, state: State<AppState>) -> Result<String, String> {
-    let mut ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let mut ledger = state.lock().map_err(|e| e.to_string())?;
     ledger.record_bet_loss(&address, amount, &bet_id);
     Ok(format!("Recorded loss of {} BB for {} on bet {}", amount, address, bet_id))
 }
@@ -174,7 +172,7 @@ pub fn create_market(
     initial_liquidity: f64,
     state: State<AppState>
 ) -> Result<MarketInfo, String> {
-    let mut ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let mut ledger = state.lock().map_err(|e| e.to_string())?;
     
     // Generate a unique market ID
     let market_id = format!("MARKET_{}", uuid::Uuid::new_v4().to_string().replace("-", "").to_uppercase()[..8].to_string());
@@ -210,7 +208,7 @@ pub fn create_market(
 /// Get all prediction markets
 #[tauri::command]
 pub fn get_markets(state: State<AppState>) -> Result<Vec<MarketInfo>, String> {
-    let _ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let _ledger = state.lock().map_err(|e| e.to_string())?;
     
     // For demo purposes, return some sample markets
     // In a real implementation, this would come from persistent storage
@@ -263,7 +261,7 @@ pub fn place_market_bet(
     outcome: String, // "YES" or "NO"
     state: State<AppState>
 ) -> Result<String, String> {
-    let mut ledger = state.ledger.lock().map_err(|e| e.to_string())?;
+    let mut ledger = state.lock().map_err(|e| e.to_string())?;
     
     // Validate account has sufficient balance
     let balance = ledger.get_balance(&account_name);

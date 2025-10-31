@@ -3,10 +3,10 @@
 mod commands;
 
 use tauri::Manager;
-use blackbook_lib::AppState;
+use blackbook_lib::{create_app_state};
 
 fn main() {
-    let app_state = blackbook_lib::create_app_state();
+    let app_state = create_app_state();
 
     tauri::Builder::default()
         .manage(app_state)
