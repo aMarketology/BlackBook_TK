@@ -44,6 +44,67 @@ html, body {
     box-shadow: 0 4px 20px rgba(230, 57, 70, 0.2);
 }
 
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.header-left {
+    flex: 1;
+}
+
+.header-right {
+    min-width: 300px;
+}
+
+.accounts-selector {
+    position: relative;
+}
+
+.accounts-toggle {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--deep-black);
+    border: 1px solid var(--dark-gray);
+    border-radius: 4px;
+    color: var(--page-yellow);
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95rem;
+}
+
+.accounts-toggle:hover {
+    border-color: var(--death-red);
+    background: rgba(230, 57, 70, 0.1);
+}
+
+.accounts-toggle.active {
+    border-color: var(--death-red);
+    background: rgba(230, 57, 70, 0.15);
+}
+
+.dropdown-arrow {
+    font-size: 0.7rem;
+    margin-left: 8px;
+    transition: transform 0.2s ease;
+}
+
+.accounts-toggle.active .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.header-right h3 {
+    font-size: 1rem;
+    color: var(--gold-accent);
+    margin-bottom: 8px;
+}
+
 .header h1 {
     font-size: 2rem;
     color: var(--page-yellow);
@@ -64,6 +125,29 @@ html, body {
     border-radius: 4px;
     font-size: 0.9rem;
     color: var(--gold-accent);
+}
+
+.accounts-dropdown {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    background: rgba(26, 26, 26, 0.9);
+    border: 1px solid var(--dark-gray);
+    border-radius: 4px;
+    padding: 8px;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    margin-top: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.accounts-dropdown.hidden {
+    display: none;
 }
 
 /* Main Content */
@@ -110,6 +194,24 @@ html, body {
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s ease;
+}
+
+.accounts-dropdown .account-item {
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.accounts-dropdown .account-name {
+    font-size: 0.9rem;
+    margin-right: 8px;
+}
+
+.accounts-dropdown .account-balance {
+    font-size: 0.75rem;
+    margin-top: 0;
 }
 
 .account-item:hover {
@@ -210,8 +312,8 @@ html, body {
 
 .markets-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
     overflow-y: auto;
     padding-right: 8px;
 }
@@ -233,7 +335,7 @@ html, body {
     background: var(--deep-black);
     border: 1px solid var(--dark-gray);
     border-radius: 4px;
-    padding: 16px;
+    padding: 12px;
     transition: all 0.2s ease;
 }
 
@@ -243,23 +345,23 @@ html, body {
 }
 
 .market-card h3 {
-    font-size: 1.1rem;
+    font-size: 0.825rem;
     color: var(--page-yellow);
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .market-card p {
-    font-size: 0.9rem;
+    font-size: 0.675rem;
     color: var(--pale-text);
-    margin-bottom: 12px;
+    margin-bottom: 9px;
     line-height: 1.4;
 }
 
 .market-prices {
     display: flex;
-    gap: 16px;
-    margin-bottom: 12px;
-    padding-bottom: 12px;
+    gap: 12px;
+    margin-bottom: 9px;
+    padding-bottom: 9px;
     border-bottom: 1px solid var(--dark-gray);
 }
 
@@ -270,14 +372,14 @@ html, body {
 
 .price-column .label {
     display: block;
-    font-size: 0.85rem;
+    font-size: 0.6375rem;
     color: var(--gold-accent);
-    margin-bottom: 4px;
+    margin-bottom: 3px;
 }
 
 .price-column .price {
     display: block;
-    font-size: 1.3rem;
+    font-size: 0.975rem;
     font-weight: bold;
     color: var(--death-red);
     font-family: 'Courier New', monospace;
@@ -285,12 +387,12 @@ html, body {
 
 .market-actions {
     display: flex;
-    gap: 8px;
+    gap: 6px;
 }
 
 .btn-bet {
     flex: 1;
-    padding: 10px;
+    padding: 7.5px;
     border: 1px solid var(--death-red);
     background: rgba(230, 57, 70, 0.1);
     color: var(--death-red);
@@ -298,6 +400,7 @@ html, body {
     cursor: pointer;
     font-weight: bold;
     transition: all 0.2s ease;
+    font-size: 0.75rem;
 }
 
 .btn-bet:hover {

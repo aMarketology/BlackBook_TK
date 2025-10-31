@@ -5,7 +5,6 @@
 
 import { invoke } from '@tauri-apps/api/tauri';
 import { debugConsole } from './lib/debug_console';
-import { getPrices, formatPrice } from './lib/prices';
 import { getPolymarketEvents, formatVolume } from './lib/polymarket';
 
 // ============================================
@@ -73,10 +72,12 @@ async function loadMarkets() {
 async function updatePrices() {
     try {
         log('📈 Fetching live prices from CoinGecko...', 'info');
-        const prices = await getPrices();
+        const prices = await invoke('get_prices') as { btc: number; sol: number; timestamp: number };
         
         const btcEl = document.getElementById('btcPrice');
         const solEl = document.getElementById('solPrice');
+        
+        const formatPrice = (price: number) => `$${price.toFixed(2)}`;
         
         if (btcEl) btcEl.textContent = formatPrice(prices.btc);
         if (solEl) solEl.textContent = formatPrice(prices.sol);
@@ -151,7 +152,12 @@ async function placeBet(marketId: string, outcome: string, amount: number) {
 
 function renderAccounts() {
     const list = document.getElementById('accountsList');
-    if (!list) return;
+    if (!list) {
+        console.error('accountsList element not found');
+        return;
+    }
+    
+    console.log('Rendering accounts:', accounts.length);
     
     list.innerHTML = accounts.map(acc => `
         <div class="account-item ${selectedAccount?.name === acc.name ? 'active' : ''}" onclick="selectAccount('${acc.name}')">
@@ -159,6 +165,9 @@ function renderAccounts() {
             <div class="account-balance">${acc.balance.toFixed(2)} BB</div>
         </div>
     `).join('');
+    
+    // Update the toggle button text
+    updateAccountsToggleDisplay();
 }
 
 function renderMarkets() {
@@ -199,6 +208,7 @@ function selectAccount(accountName: string) {
     }
     renderAccounts();
     updateAccountInfo();
+    closeAccountsDropdown();
 }
 
 function updateAccountInfo() {
@@ -211,6 +221,43 @@ function updateAccountInfo() {
     } else {
         if (addressEl) addressEl.textContent = '--';
         if (balanceEl) balanceEl.textContent = '0 BB';
+    }
+}
+
+function updateAccountsToggleDisplay() {
+    const toggleBtn = document.getElementById('accountsToggle');
+    const displayName = document.getElementById('selectedAccountName');
+    
+    if (toggleBtn && displayName) {
+        if (selectedAccount) {
+            displayName.textContent = selectedAccount.name;
+        } else {
+            displayName.textContent = 'Select Account';
+        }
+    }
+}
+
+function toggleAccountsDropdown() {
+    const dropdown = document.getElementById('accountsDropdown');
+    const toggle = document.getElementById('accountsToggle');
+    
+    console.log('Toggle clicked - dropdown hidden:', dropdown?.classList.contains('hidden'));
+    
+    if (dropdown && toggle) {
+        dropdown.classList.toggle('hidden');
+        toggle.classList.toggle('active');
+        
+        console.log('After toggle - dropdown hidden:', dropdown.classList.contains('hidden'));
+    }
+}
+
+function closeAccountsDropdown() {
+    const dropdown = document.getElementById('accountsDropdown');
+    const toggle = document.getElementById('accountsToggle');
+    
+    if (dropdown && toggle) {
+        dropdown.classList.add('hidden');
+        toggle.classList.remove('active');
     }
 }
 
@@ -233,9 +280,18 @@ async function init() {
 
 // Start app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e: any) => {
+        const selector = document.querySelector('.accounts-selector');
+        if (selector && !selector.contains(e.target)) {
+            closeAccountsDropdown();
+        }
+    });
+    
     init();
 });
 
 // Expose functions globally for inline event handlers
 (window as any).selectAccount = selectAccount;
 (window as any).placeBet = placeBet;
+(window as any).toggleAccountsDropdown = toggleAccountsDropdown;

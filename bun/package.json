@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bun run dev:server",
     "dev:server": "python3 -m http.server 8082 -d public",
-    "build": "bun build src/main.ts --outdir dist",
+    "build": "bun build src/main.ts --outdir public/js",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"

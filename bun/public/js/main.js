@@ -1,3 +1,41 @@
+// node_modules/@tauri-apps/api/tauri.js
+function uid() {
+  return window.crypto.getRandomValues(new Uint32Array(1))[0];
+}
+function transformCallback(callback, once = false) {
+  const identifier = uid();
+  const prop = `_${identifier}`;
+  Object.defineProperty(window, prop, {
+    value: (result) => {
+      if (once) {
+        Reflect.deleteProperty(window, prop);
+      }
+      return callback === null || callback === undefined ? undefined : callback(result);
+    },
+    writable: false,
+    configurable: true
+  });
+  return identifier;
+}
+async function invoke(cmd, args = {}) {
+  return new Promise((resolve, reject) => {
+    const callback = transformCallback((e) => {
+      resolve(e);
+      Reflect.deleteProperty(window, `_${error}`);
+    }, true);
+    const error = transformCallback((e) => {
+      reject(e);
+      Reflect.deleteProperty(window, `_${callback}`);
+    }, true);
+    window.__TAURI_IPC__({
+      cmd,
+      callback,
+      error,
+      ...args
+    });
+  });
+}
+
 // src/lib/debug_console.ts
 class DebugConsole {
   messages = [];
@@ -82,42 +120,39 @@ ${rows}`;
 }
 var debugConsole = new DebugConsole;
 
-// node_modules/@tauri-apps/api/tauri.js
-function uid() {
-  return window.crypto.getRandomValues(new Uint32Array(1))[0];
+// src/lib/polymarket.ts
+var POLYMARKET_API = "https://gamma-api.polymarket.com/markets";
+async function getPolymarketEvents() {
+  try {
+    const response = await fetch(`${POLYMARKET_API}?limit=50&active=true`);
+    if (!response.ok) {
+      throw new Error(`Polymarket API error: ${response.status}`);
+    }
+    const data = await response.json();
+    const markets = (data || []).slice(0, 7).map((market) => ({
+      id: market.id || market.condition_id || `market_${Math.random()}`,
+      question: market.question || "Unknown Market",
+      description: market.description || "",
+      outcomes: market.outcomes || ["YES", "NO"],
+      outcomesPrices: market.outcome_prices || [0.5, 0.5],
+      volume24h: market.volume_24h || 0,
+      volume: market.volume || 0,
+      active: market.active !== false
+    }));
+    return markets;
+  } catch (error) {
+    console.error("❌ Polymarket API fetch failed:", error);
+    throw error;
+  }
 }
-function transformCallback(callback, once = false) {
-  const identifier = uid();
-  const prop = `_${identifier}`;
-  Object.defineProperty(window, prop, {
-    value: (result) => {
-      if (once) {
-        Reflect.deleteProperty(window, prop);
-      }
-      return callback === null || callback === undefined ? undefined : callback(result);
-    },
-    writable: false,
-    configurable: true
-  });
-  return identifier;
-}
-async function invoke(cmd, args = {}) {
-  return new Promise((resolve, reject) => {
-    const callback = transformCallback((e) => {
-      resolve(e);
-      Reflect.deleteProperty(window, `_${error}`);
-    }, true);
-    const error = transformCallback((e) => {
-      reject(e);
-      Reflect.deleteProperty(window, `_${callback}`);
-    }, true);
-    window.__TAURI_IPC__({
-      cmd,
-      callback,
-      error,
-      ...args
-    });
-  });
+function formatVolume(volume) {
+  if (volume >= 1e6) {
+    return `$${(volume / 1e6).toFixed(1)}M`;
+  }
+  if (volume >= 1000) {
+    return `$${(volume / 1000).toFixed(1)}K`;
+  }
+  return `$${volume.toFixed(0)}`;
 }
 
 // src/main.ts
@@ -150,6 +185,57 @@ async function loadMarkets() {
     log(`❌ Failed to load markets: ${error}`, "error");
   }
 }
+async function updatePrices() {
+  try {
+    log("\uD83D\uDCC8 Fetching live prices from CoinGecko...", "info");
+    const prices = await invoke("get_prices");
+    const btcEl = document.getElementById("btcPrice");
+    const solEl = document.getElementById("solPrice");
+    const formatPrice = (price) => `$${price.toFixed(2)}`;
+    if (btcEl)
+      btcEl.textContent = formatPrice(prices.btc);
+    if (solEl)
+      solEl.textContent = formatPrice(prices.sol);
+    log(`✅ Updated prices - BTC: ${formatPrice(prices.btc)}, SOL: ${formatPrice(prices.sol)}`, "success");
+  } catch (error) {
+    log(`⚠️ Price update failed: ${error}`, "warning");
+    const btcEl = document.getElementById("btcPrice");
+    const solEl = document.getElementById("solPrice");
+    if (btcEl)
+      btcEl.textContent = "API Error";
+    if (solEl)
+      solEl.textContent = "API Error";
+  }
+}
+async function loadPolymarketEvents() {
+  try {
+    log("\uD83D\uDD2E Fetching Polymarket events...", "info");
+    const polymarketData = await getPolymarketEvents();
+    log(`✅ Loaded ${polymarketData.length} Polymarket events`, "success");
+    const polyEl = document.getElementById("polymarketEvents");
+    if (polyEl && polymarketData.length > 0) {
+      polyEl.innerHTML = polymarketData.map((m) => `
+                <div class="market-card">
+                    <h3>${m.question}</h3>
+                    <p>${m.description}</p>
+                    <div class="market-prices">
+                        <div class="price-column">
+                            <span class="label">${m.outcomes[0] || "YES"}</span>
+                            <span class="price">${(m.outcomesPrices[0] * 100).toFixed(0)}¢</span>
+                        </div>
+                        <div class="price-column">
+                            <span class="label">${m.outcomes[1] || "NO"}</span>
+                            <span class="price">${(m.outcomesPrices[1] * 100).toFixed(0)}¢</span>
+                        </div>
+                    </div>
+                    <div class="market-volume">Vol: ${formatVolume(m.volume)}</div>
+                </div>
+            `).join("");
+    }
+  } catch (error) {
+    log(`⚠️ Polymarket fetch failed: ${error}`, "warning");
+  }
+}
 async function placeBet(marketId, outcome, amount) {
   try {
     if (!selectedAccount) {
@@ -157,7 +243,7 @@ async function placeBet(marketId, outcome, amount) {
       return;
     }
     log(`\uD83C\uDFAF Placing ${outcome} bet for ${amount} BB on market ${marketId}...`, "info");
-    const result = await invoke("place_bet", {
+    await invoke("place_bet", {
       account: selectedAccount.name,
       market_id: marketId,
       outcome,
@@ -171,14 +257,18 @@ async function placeBet(marketId, outcome, amount) {
 }
 function renderAccounts() {
   const list = document.getElementById("accountsList");
-  if (!list)
+  if (!list) {
+    console.error("accountsList element not found");
     return;
+  }
+  console.log("Rendering accounts:", accounts.length);
   list.innerHTML = accounts.map((acc) => `
         <div class="account-item ${selectedAccount?.name === acc.name ? "active" : ""}" onclick="selectAccount('${acc.name}')">
             <div class="account-name">${acc.name}</div>
             <div class="account-balance">${acc.balance.toFixed(2)} BB</div>
         </div>
     `).join("");
+  updateAccountsToggleDisplay();
 }
 function renderMarkets() {
   const list = document.getElementById("marketsList");
@@ -216,6 +306,7 @@ function selectAccount(accountName) {
   }
   renderAccounts();
   updateAccountInfo();
+  closeAccountsDropdown();
 }
 function updateAccountInfo() {
   const addressEl = document.getElementById("selectedAddress");
@@ -232,13 +323,52 @@ function updateAccountInfo() {
       balanceEl.textContent = "0 BB";
   }
 }
+function updateAccountsToggleDisplay() {
+  const toggleBtn = document.getElementById("accountsToggle");
+  const displayName = document.getElementById("selectedAccountName");
+  if (toggleBtn && displayName) {
+    if (selectedAccount) {
+      displayName.textContent = selectedAccount.name;
+    } else {
+      displayName.textContent = "Select Account";
+    }
+  }
+}
+function toggleAccountsDropdown() {
+  const dropdown = document.getElementById("accountsDropdown");
+  const toggle = document.getElementById("accountsToggle");
+  console.log("Toggle clicked - dropdown hidden:", dropdown?.classList.contains("hidden"));
+  if (dropdown && toggle) {
+    dropdown.classList.toggle("hidden");
+    toggle.classList.toggle("active");
+    console.log("After toggle - dropdown hidden:", dropdown.classList.contains("hidden"));
+  }
+}
+function closeAccountsDropdown() {
+  const dropdown = document.getElementById("accountsDropdown");
+  const toggle = document.getElementById("accountsToggle");
+  if (dropdown && toggle) {
+    dropdown.classList.add("hidden");
+    toggle.classList.remove("active");
+  }
+}
 async function init() {
   log("⚡ Initializing BlackBook L1 Desktop App...", "info");
   await loadAccounts();
   await loadMarkets();
+  await updatePrices();
+  await loadPolymarketEvents();
+  setInterval(updatePrices, 30000);
 }
 document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("click", (e) => {
+    const selector = document.querySelector(".accounts-selector");
+    if (selector && !selector.contains(e.target)) {
+      closeAccountsDropdown();
+    }
+  });
   init();
 });
 window.selectAccount = selectAccount;
 window.placeBet = placeBet;
+window.toggleAccountsDropdown = toggleAccountsDropdown;

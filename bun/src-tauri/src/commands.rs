@@ -3,6 +3,26 @@ use std::sync::{Arc, Mutex};
 use tauri::State;
 use blackbook_prediction_market::ledger::{Ledger, Recipe, Transaction};
 
+/// Response DTO for live prices
+#[derive(Debug, Serialize, Clone)]
+pub struct PriceResponse {
+    pub btc: f64,
+    pub sol: f64,
+    pub timestamp: i64,
+}
+
+/// CoinGecko price response
+#[derive(Debug, Deserialize)]
+pub struct CoinGeckoResponse {
+    pub bitcoin: Option<CoinGeckoPrice>,
+    pub solana: Option<CoinGeckoPrice>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CoinGeckoPrice {
+    pub usd: f64,
+}
+
 /// Application state holding the blockchain ledger
 pub type AppState = Arc<Mutex<Ledger>>;
 
@@ -285,4 +305,45 @@ pub fn place_market_bet(
     ledger.record_bet_win(&account_name, 0.0, &bet_id); // 0 amount initially, updated on resolution
     
     Ok(format!("Successfully placed {} BB bet on {} for market {}", amount, outcome, market_id))
+}
+
+/// Fetch live prices from CoinGecko API
+#[tauri::command]
+pub async fn get_prices() -> Result<PriceResponse, String> {
+    let client = reqwest::Client::new();
+    let url = "https://api.coingecko.com/api/v3/simple/price";
+    
+    let response = client
+        .get(url)
+        .query(&[("ids", "bitcoin,solana"), ("vs_currencies", "usd")])
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch prices: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("CoinGecko API error: {}", response.status()));
+    }
+
+    let data: CoinGeckoResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse CoinGecko response: {}", e))?;
+
+    let btc = data
+        .bitcoin
+        .ok_or("Bitcoin price not found in response")?
+        .usd;
+    let sol = data
+        .solana
+        .ok_or("Solana price not found in response")?
+        .usd;
+
+    Ok(PriceResponse {
+        btc,
+        sol,
+        timestamp: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0),
+    })
 }

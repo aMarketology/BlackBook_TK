@@ -10,11 +10,28 @@
     <div class="app-container">
         <!-- Header -->
         <header class="header">
-            <h1>🎯 BlackBook L1 Prediction Market</h1>
-            <div class="network-info">
-                <span class="badge">🔗 Layer 1 Blockchain</span>
-                <span class="badge">💎 BB Token</span>
-                <span class="badge">📊 8 Accounts</span>
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>🎯 BlackBook L1 Prediction Market</h1>
+                    <div class="network-info">
+                        <span class="badge">🔗 Layer 1 Blockchain</span>
+                        <span class="badge">💎 BB Token</span>
+                        <span class="badge">📊 8 Accounts</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="accounts-selector">
+                        <button id="accountsToggle" class="accounts-toggle" onclick="toggleAccountsDropdown()">
+                            <span id="selectedAccountName">Select Account</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div id="accountsDropdown" class="accounts-dropdown hidden">
+                            <div id="accountsList" class="accounts-list">
+                                <p class="loading">Loading accounts...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -22,11 +39,6 @@
         <div class="main-content">
             <!-- Sidebar -->
             <aside class="sidebar">
-                <h2>🏦 L1 Accounts</h2>
-                <div id="accountsList" class="accounts-list">
-                    <p class="loading">Loading accounts...</p>
-                </div>
-
                 <h2>👤 Selected Account</h2>
                 <div class="account-info">
                     <div class="info-row">
