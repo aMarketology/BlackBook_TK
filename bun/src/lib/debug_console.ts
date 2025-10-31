@@ -2,6 +2,7 @@
  * BlackBook Debug Console
  * Manages all debug logging and console display
  * Critical for monitoring blockchain connection and account loading
+ * Self-contained: includes UI building, rendering, and all event handling
  */
 
 export type LogLevel = 'info' | 'success' | 'warning' | 'error';
@@ -19,7 +20,74 @@ export class DebugConsole {
     private consoleElement: HTMLElement | null = null;
 
     constructor() {
+        // Initialize after DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.initializeDOM());
+        } else {
+            this.initializeDOM();
+        }
+    }
+
+    /**
+     * Initialize DOM elements and event listeners
+     */
+    private initializeDOM(): void {
+        this.buildFooter();
         this.consoleElement = document.getElementById('debugConsole');
+        this.setupClearButton();
+    }
+
+    /**
+     * Build the footer with debug console and clear button
+     */
+    private buildFooter(): void {
+        let footer = document.querySelector('footer');
+        if (!footer) {
+            footer = document.createElement('footer');
+            footer.className = 'footer';
+            document.body.appendChild(footer);
+        }
+
+        // Clear existing content
+        footer.innerHTML = '';
+
+        const debugContainer = document.createElement('div');
+        debugContainer.className = 'debug-container';
+
+        const debugHeader = document.createElement('div');
+        debugHeader.className = 'debug-header';
+
+        const headerTitle = document.createElement('div');
+        headerTitle.textContent = '🐛 Debug Console';
+        headerTitle.style.flex = '1';
+
+        const clearButton = document.createElement('button');
+        clearButton.id = 'clearLogsBtn';
+        clearButton.className = 'clear-logs-btn';
+        clearButton.textContent = '🗑️ Clear';
+        clearButton.title = 'Clear debug logs';
+
+        debugHeader.appendChild(headerTitle);
+        debugHeader.appendChild(clearButton);
+
+        const debugConsole = document.createElement('div');
+        debugConsole.id = 'debugConsole';
+        debugConsole.className = 'debug-console';
+
+        debugContainer.appendChild(debugHeader);
+        debugContainer.appendChild(debugConsole);
+
+        footer.appendChild(debugContainer);
+    }
+
+    /**
+     * Setup the clear button event listener
+     */
+    private setupClearButton(): void {
+        const clearBtn = document.getElementById('clearLogsBtn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearWithWelcome());
+        }
     }
 
     /**
@@ -87,6 +155,14 @@ export class DebugConsole {
     public clear(): void {
         this.messages = [];
         this.render();
+    }
+
+    /**
+     * Clear logs and show welcome message
+     */
+    public clearWithWelcome(): void {
+        this.messages = [];
+        this.log('🎯 Welcome to the BlackBook', 'success');
     }
 
     /**

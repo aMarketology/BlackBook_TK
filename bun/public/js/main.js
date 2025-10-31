@@ -17,7 +17,7 @@ function transformCallback(callback, once = false) {
   });
   return identifier;
 }
-async function invoke(cmd, args = {}) {
+async function invoke2(cmd, args = {}) {
   return new Promise((resolve, reject) => {
     const callback = transformCallback((e) => {
       resolve(e);
@@ -36,13 +36,165 @@ async function invoke(cmd, args = {}) {
   });
 }
 
+// src/lib/backend_service.ts
+class BackendService {
+  static async getAllAccounts() {
+    try {
+      return await invoke2("get_accounts");
+    } catch (error) {
+      console.error("❌ Failed to get accounts:", error);
+      throw error;
+    }
+  }
+  static async getBalance(address) {
+    try {
+      return await invoke2("get_balance", { address });
+    } catch (error) {
+      console.error("❌ Failed to get balance:", error);
+      throw error;
+    }
+  }
+  static async deposit(address, amount) {
+    try {
+      return await invoke2("admin_deposit", { address, amount });
+    } catch (error) {
+      console.error("❌ Deposit failed:", error);
+      throw error;
+    }
+  }
+  static async transfer(from, to, amount) {
+    try {
+      return await invoke2("transfer", { from, to, amount });
+    } catch (error) {
+      console.error("❌ Transfer failed:", error);
+      throw error;
+    }
+  }
+  static async getAccountTransactions(address) {
+    try {
+      return await invoke2("get_account_transactions", { address });
+    } catch (error) {
+      console.error("❌ Failed to get transactions:", error);
+      throw error;
+    }
+  }
+  static async getAllTransactions() {
+    try {
+      return await invoke2("get_all_transactions");
+    } catch (error) {
+      console.error("❌ Failed to get all transactions:", error);
+      throw error;
+    }
+  }
+  static async getLedgerStats() {
+    try {
+      return await invoke2("get_stats");
+    } catch (error) {
+      console.error("❌ Failed to get stats:", error);
+      throw error;
+    }
+  }
+  static async getMarkets() {
+    try {
+      return await invoke2("get_markets");
+    } catch (error) {
+      console.error("❌ Failed to get markets:", error);
+      throw error;
+    }
+  }
+  static async getMarket(marketId) {
+    try {
+      return await invoke2("get_market", { marketId });
+    } catch (error) {
+      console.error("❌ Failed to get market:", error);
+      throw error;
+    }
+  }
+  static async placeBet(marketId, account, amount, prediction) {
+    try {
+      return await invoke2("place_bet", { marketId, account, amount, prediction });
+    } catch (error) {
+      console.error("❌ Bet placement failed:", error);
+      throw error;
+    }
+  }
+  static async resolveMarket(marketId, winningOption) {
+    try {
+      return await invoke2("resolve_market", { marketId, winningOption });
+    } catch (error) {
+      console.error("❌ Market resolution failed:", error);
+      throw error;
+    }
+  }
+  static async getPrices() {
+    try {
+      return await invoke2("get_prices");
+    } catch (error) {
+      console.error("❌ Price fetch failed:", error);
+      throw error;
+    }
+  }
+  static async getPolymarketEvents() {
+    try {
+      return await invoke2("get_polymarket_events");
+    } catch (error) {
+      console.error("❌ Polymarket fetch failed:", error);
+      throw error;
+    }
+  }
+}
+
 // src/lib/debug_console.ts
 class DebugConsole {
   messages = [];
   maxMessages = 100;
   consoleElement = null;
   constructor() {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () => this.initializeDOM());
+    } else {
+      this.initializeDOM();
+    }
+  }
+  initializeDOM() {
+    this.buildFooter();
     this.consoleElement = document.getElementById("debugConsole");
+    this.setupClearButton();
+  }
+  buildFooter() {
+    let footer = document.querySelector("footer");
+    if (!footer) {
+      footer = document.createElement("footer");
+      footer.className = "footer";
+      document.body.appendChild(footer);
+    }
+    footer.innerHTML = "";
+    const debugContainer = document.createElement("div");
+    debugContainer.className = "debug-container";
+    const debugHeader = document.createElement("div");
+    debugHeader.className = "debug-header";
+    const headerTitle = document.createElement("div");
+    headerTitle.textContent = "\uD83D\uDC1B Debug Console";
+    headerTitle.style.flex = "1";
+    const clearButton = document.createElement("button");
+    clearButton.id = "clearLogsBtn";
+    clearButton.className = "clear-logs-btn";
+    clearButton.textContent = "\uD83D\uDDD1️ Clear";
+    clearButton.title = "Clear debug logs";
+    debugHeader.appendChild(headerTitle);
+    debugHeader.appendChild(clearButton);
+    const debugConsole = document.createElement("div");
+    debugConsole.id = "debugConsole";
+    debugConsole.className = "debug-console";
+    debugContainer.appendChild(debugHeader);
+    debugContainer.appendChild(debugConsole);
+    footer.appendChild(debugContainer);
+  }
+  setupClearButton() {
+    const clearBtn = document.getElementById("clearLogsBtn");
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => this.clearWithWelcome());
+    }
   }
   log(message, level = "info") {
     const timestamp = new Date().toLocaleTimeString();
@@ -77,6 +229,10 @@ class DebugConsole {
   clear() {
     this.messages = [];
     this.render();
+  }
+  clearWithWelcome() {
+    this.messages = [];
+    this.log("\uD83C\uDFAF Welcome to the BlackBook", "success");
   }
   render() {
     if (!this.consoleElement)
@@ -146,7 +302,6 @@ class UIBuilder {
     transfersContainer.appendChild(this.buildTransfersPage());
     transfersContainer.classList.add("hidden");
     container.appendChild(transfersContainer);
-    container.appendChild(this.buildFooter());
     return container;
   }
   static buildHeader() {
@@ -256,53 +411,104 @@ class UIBuilder {
   }
   static buildTransfersPage() {
     const page = document.createElement("div");
+    page.id = "transfersPage";
     page.className = "page";
     const pageHeader = document.createElement("div");
     pageHeader.className = "page-header";
     pageHeader.innerHTML = `
             <button class="back-btn" id="backBtn">← Back to Markets</button>
-            <h2>\uD83D\uDD04 Transfer Tokens</h2>
+            <h2>\uD83D\uDD04 Admin Transfer Panel</h2>
+            <p class="page-subtitle">Transfer BlackBook tokens between accounts</p>
         `;
     page.appendChild(pageHeader);
     const pageContent = document.createElement("div");
     pageContent.className = "page-content";
-    const transferForm = document.createElement("div");
-    transferForm.className = "transfer-form";
-    transferForm.innerHTML = `
-            <div class="form-group">
-                <label for="transferFrom">From Account:</label>
-                <select id="transferFrom" class="form-input">
-                    <option value="">Select sender...</option>
-                </select>
-                <div class="balance-info">
-                    <span>Balance: <span id="fromBalance">0</span> BB</span>
+    pageContent.innerHTML = `
+            <div class="transfer-container">
+                <!-- Transfer Form Card -->
+                <div class="transfer-card">
+                    <h3>\uD83D\uDCB8 Transfer Tokens</h3>
+                    
+                    <div class="form-group">
+                        <label for="transferFrom">
+                            <span class="label-text">From Account:</span>
+                            <span class="required">*</span>
+                        </label>
+                        <select id="transferFrom" class="form-input">
+                            <option value="">Select sender...</option>
+                        </select>
+                        <div class="balance-display">
+                            <span class="balance-label">Available:</span>
+                            <span class="balance-value"><span id="fromBalance">0</span> BB</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transferTo">
+                            <span class="label-text">To Account:</span>
+                            <span class="required">*</span>
+                        </label>
+                        <select id="transferTo" class="form-input">
+                            <option value="">Select recipient...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transferAmount">
+                            <span class="label-text">Amount (BB):</span>
+                            <span class="required">*</span>
+                        </label>
+                        <input type="number" id="transferAmount" class="form-input" 
+                            placeholder="Enter amount" min="0" step="1" value="">
+                        <div class="hint-text">Max available: <span id="maxAvailable">0</span> BB</div>
+                    </div>
+                    
+                    <div class="transfer-message" id="transferMessage"></div>
+                    
+                    <button class="btn btn-primary btn-large" id="sendTransferBtn">
+                        <span class="btn-icon">\uD83D\uDCE4</span>
+                        <span class="btn-text">Send Transfer</span>
+                    </button>
+                </div>
+                
+                <!-- Quick Transfer Templates -->
+                <div class="quick-actions">
+                    <h4>⚡ Quick Actions</h4>
+                    <button class="quick-btn" id="quickTransfer50">Transfer 50 BB</button>
+                    <button class="quick-btn" id="quickTransfer100">Transfer 100 BB</button>
+                    <button class="quick-btn" id="quickTransfer500">Transfer 500 BB</button>
                 </div>
             </div>
-            <div class="form-group">
-                <label for="transferTo">To Account:</label>
-                <select id="transferTo" class="form-input">
-                    <option value="">Select recipient...</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="transferAmount">Amount (BB):</label>
-                <input type="number" id="transferAmount" class="form-input" placeholder="Enter amount" min="0" step="1">
-            </div>
-            <button class="btn btn-primary" id="sendTransferBtn">Send Transfer</button>
         `;
-    pageContent.appendChild(transferForm);
+    pageContent.appendChild(this.createTransferStatsPanel());
     page.appendChild(pageContent);
     return page;
   }
-  static buildFooter() {
-    const footer = document.createElement("footer");
-    footer.className = "footer";
-    const debugConsole2 = document.createElement("div");
-    debugConsole2.id = "debugConsole";
-    debugConsole2.className = "debug-console";
-    debugConsole2.innerHTML = '<div class="console-header">\uD83D\uDC1B Debug Console</div>';
-    footer.appendChild(debugConsole2);
-    return footer;
+  static createTransferStatsPanel() {
+    const statsPanel = document.createElement("div");
+    statsPanel.className = "transfer-stats-panel";
+    statsPanel.innerHTML = `
+            <h3>\uD83D\uDCCA Transfer Statistics</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Total Accounts</div>
+                    <div class="stat-value" id="statsAccounts">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total Volume</div>
+                    <div class="stat-value" id="statsVolume">0 BB</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total Transfers</div>
+                    <div class="stat-value" id="statsTransfers">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total Bets</div>
+                    <div class="stat-value" id="statsBets">0</div>
+                </div>
+            </div>
+        `;
+    return statsPanel;
   }
   static populateAccountsList(accounts) {
     const accountsList = document.getElementById("accountsList");
@@ -377,7 +583,7 @@ async function loadAccounts() {
 async function loadMarkets() {
   try {
     log("\uD83D\uDCCA Loading prediction markets...", "info");
-    markets = await invoke("get_markets");
+    markets = await BackendService.getMarkets();
     log(`✅ Loaded ${markets.length} markets`, "success");
     renderMarkets();
   } catch (error) {
@@ -387,7 +593,7 @@ async function loadMarkets() {
 async function updatePrices() {
   try {
     log("\uD83D\uDCC8 Fetching live prices from CoinGecko...", "info");
-    const prices = await invoke("get_prices");
+    const prices = await BackendService.getPrices();
     UIBuilder.updatePrices(prices.btc, prices.sol);
     log(`✅ Updated prices - BTC: $${prices.btc.toFixed(2)}, SOL: $${prices.sol.toFixed(2)}`, "success");
   } catch (error) {
@@ -402,7 +608,7 @@ async function loadPolymarketEvents() {
       return;
     }
     log("\uD83D\uDD2E Fetching Polymarket events...", "info");
-    const polymarketData = await invoke("get_polymarket_events");
+    const polymarketData = await BackendService.getPolymarketEvents();
     log(`✅ Loaded ${polymarketData.length} Polymarket events`, "success");
     if (polymarketData.length > 0) {
       polyEl.innerHTML = polymarketData.map((m) => `
@@ -440,12 +646,7 @@ async function placeBet(marketId, outcome, amount) {
       return;
     }
     log(`\uD83C\uDFAF Placing ${outcome} bet for ${amount} BB on market ${marketId}...`, "info");
-    await invoke("place_bet", {
-      account: selectedAccount.name,
-      market_id: marketId,
-      outcome,
-      amount
-    });
+    await BackendService.placeBet(marketId, selectedAccount.name, amount, outcome);
     log(`✅ Bet placed successfully!`, "success");
     await loadAccounts();
   } catch (error) {
@@ -564,13 +765,47 @@ function populateTransferSelects() {
 function updateFromBalance() {
   const fromSelect = document.getElementById("transferFrom");
   const balanceDisplay = document.getElementById("fromBalance");
+  const maxAvailable = document.getElementById("maxAvailable");
   if (!fromSelect || !balanceDisplay)
     return;
   const account = accounts.find((a) => a.name === fromSelect.value);
   if (account) {
     balanceDisplay.textContent = account.balance.toString();
+    if (maxAvailable) {
+      maxAvailable.textContent = account.balance.toString();
+    }
   } else {
     balanceDisplay.textContent = "0";
+    if (maxAvailable) {
+      maxAvailable.textContent = "0";
+    }
+  }
+}
+function showTransferMessage(message, type) {
+  const messageEl = document.getElementById("transferMessage");
+  if (!messageEl)
+    return;
+  messageEl.textContent = message;
+  messageEl.className = `transfer-message show ${type}`;
+  if (type === "success") {
+    setTimeout(() => {
+      messageEl.classList.remove("show");
+    }, 4000);
+  }
+}
+function setQuickTransferAmount(amount) {
+  const fromSelect = document.getElementById("transferFrom");
+  const amountInput = document.getElementById("transferAmount");
+  if (!fromSelect.value) {
+    showTransferMessage("❌ Please select a sender account first", "error");
+    return;
+  }
+  const account = accounts.find((a) => a.name === fromSelect.value);
+  if (account && account.balance >= amount) {
+    amountInput.value = amount.toString();
+    showTransferMessage(`\uD83D\uDCDD Set transfer amount to ${amount} BB`, "info");
+  } else {
+    showTransferMessage(`❌ Insufficient balance. Available: ${account?.balance || 0} BB`, "error");
   }
 }
 async function executeTransfer() {
@@ -578,35 +813,71 @@ async function executeTransfer() {
     const fromSelect = document.getElementById("transferFrom");
     const toSelect = document.getElementById("transferTo");
     const amountInput = document.getElementById("transferAmount");
+    const btn = document.getElementById("sendTransferBtn");
     const fromAccount = fromSelect.value;
     const toAccount = toSelect.value;
     const amount = parseFloat(amountInput.value);
     if (!fromAccount || !toAccount || !amount || amount <= 0) {
+      showTransferMessage("❌ Please fill in all transfer fields", "error");
       log("❌ Please fill in all transfer fields", "error");
       return;
     }
     if (fromAccount === toAccount) {
+      showTransferMessage("❌ Cannot transfer to the same account", "error");
       log("❌ Cannot transfer to the same account", "error");
       return;
     }
     const fromAccountObj = accounts.find((a) => a.name === fromAccount);
     if (!fromAccountObj || fromAccountObj.balance < amount) {
+      showTransferMessage(`❌ Insufficient balance. Available: ${fromAccountObj?.balance || 0} BB`, "error");
       log("❌ Insufficient balance", "error");
       return;
     }
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">Processing...</span>';
     log(`\uD83D\uDD04 Transferring ${amount} BB from ${fromAccount} to ${toAccount}...`, "info");
-    await invoke("transfer", {
-      from: fromAccount,
-      to: toAccount,
-      amount
-    });
+    showTransferMessage(`⏳ Processing transfer of ${amount} BB...`, "info");
+    await BackendService.transfer(fromAccount, toAccount, amount);
     log(`✅ Transfer successful!`, "success");
+    showTransferMessage(`✅ Successfully transferred ${amount} BB from ${fromAccount} to ${toAccount}!`, "success");
     amountInput.value = "";
     fromSelect.value = "";
     toSelect.value = "";
+    const balanceDisplay = document.getElementById("fromBalance");
+    if (balanceDisplay) {
+      balanceDisplay.textContent = "0";
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<span class="btn-icon">\uD83D\uDCE4</span><span class="btn-text">Send Transfer</span>';
     await loadAccounts();
+    await updateTransferStats();
   } catch (error) {
     log(`❌ Transfer failed: ${error}`, "error");
+    showTransferMessage(`❌ Transfer failed: ${error}`, "error");
+    const btn = document.getElementById("sendTransferBtn");
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="btn-icon">\uD83D\uDCE4</span><span class="btn-text">Send Transfer</span>';
+    }
+  }
+}
+async function updateTransferStats() {
+  try {
+    const stats = await BackendService.getLedgerStats();
+    const statsAccounts = document.getElementById("statsAccounts");
+    const statsVolume = document.getElementById("statsVolume");
+    const statsTransfers = document.getElementById("statsTransfers");
+    const statsBets = document.getElementById("statsBets");
+    if (statsAccounts)
+      statsAccounts.textContent = stats.totalAccounts.toString();
+    if (statsVolume)
+      statsVolume.textContent = `${stats.totalVolume.toFixed(0)} BB`;
+    if (statsTransfers)
+      statsTransfers.textContent = stats.totalTransactions.toString();
+    if (statsBets)
+      statsBets.textContent = stats.totalBets.toString();
+  } catch (error) {
+    console.error("Failed to update transfer stats:", error);
   }
 }
 async function init() {
@@ -622,6 +893,7 @@ async function init() {
     console.log("✅ UI built successfully");
     console.log("✅ Setting up event listeners...");
     setupEventListeners();
+    log("\uD83C\uDFAF Welcome to the BlackBook", "success");
     log("⚡ Initializing BlackBook L1 Desktop App...", "info");
     await loadAccounts();
     await loadMarkets();
@@ -650,7 +922,10 @@ function setupEventListeners() {
   }
   const transfersBtn = document.getElementById("transfersBtn");
   if (transfersBtn) {
-    transfersBtn.addEventListener("click", () => switchPage("transfers"));
+    transfersBtn.addEventListener("click", () => {
+      switchPage("transfers");
+      updateTransferStats();
+    });
   }
   const backBtn = document.getElementById("backBtn");
   if (backBtn) {
@@ -663,6 +938,18 @@ function setupEventListeners() {
   const sendBtn = document.getElementById("sendTransferBtn");
   if (sendBtn) {
     sendBtn.addEventListener("click", executeTransfer);
+  }
+  const quickTransfer50 = document.getElementById("quickTransfer50");
+  if (quickTransfer50) {
+    quickTransfer50.addEventListener("click", () => setQuickTransferAmount(50));
+  }
+  const quickTransfer100 = document.getElementById("quickTransfer100");
+  if (quickTransfer100) {
+    quickTransfer100.addEventListener("click", () => setQuickTransferAmount(100));
+  }
+  const quickTransfer500 = document.getElementById("quickTransfer500");
+  if (quickTransfer500) {
+    quickTransfer500.addEventListener("click", () => setQuickTransferAmount(500));
   }
   document.addEventListener("click", (e) => {
     const selector = document.querySelector(".accounts-selector");
@@ -678,3 +965,5 @@ window.toggleAccountsDropdown = toggleAccountsDropdown;
 window.switchPage = switchPage;
 window.updateFromBalance = updateFromBalance;
 window.executeTransfer = executeTransfer;
+window.setQuickTransferAmount = setQuickTransferAmount;
+window.updateTransferStats = updateTransferStats;

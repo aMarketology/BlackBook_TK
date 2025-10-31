@@ -1,9 +1,24 @@
 /**
- * BlackBook L1 Desktop App - Simplified
- * Direct connection to Rust blockchain via Tauri
+ * BlackBook L1 Desktop App - Simplifieasync function loadAccounts() {
+    try {
+        log('🔗 Connecting to BlackBook L1...', 'info');
+        accounts = await BackendService.getAllAccounts();
+        
+        if (accounts.length === 8) {
+            log('✅ Blockchain Connection: YES', 'success');
+            log('✅ 8 Accounts Loaded: YES', 'success');
+        } else {
+            log(`⚠️ Found ${accounts.length} accounts (expected 8)`, 'warning');
+        }
+        
+        renderAccounts();
+    } catch (error) {
+        log(`❌ Failed to connect to blockchain: ${error}`, 'error');
+    }
+}unication via BackendService abstraction layer
  */
 
-import { invoke } from '@tauri-apps/api/tauri';
+import { BackendService } from './lib/backend_service';
 import { debugConsole } from './lib/debug_console';
 import { formatVolume } from './lib/polymarket';
 import { UIBuilder } from './lib/ui_builder';
@@ -62,7 +77,7 @@ async function loadAccounts() {
 async function loadMarkets() {
     try {
         log('📊 Loading prediction markets...', 'info');
-        markets = await invoke('get_markets') as Market[];
+        markets = await BackendService.getMarkets() as Market[];
         log(`✅ Loaded ${markets.length} markets`, 'success');
         renderMarkets();
     } catch (error) {
@@ -73,7 +88,7 @@ async function loadMarkets() {
 async function updatePrices() {
     try {
         log('📈 Fetching live prices from CoinGecko...', 'info');
-        const prices = await invoke('get_prices') as { btc: number; sol: number; timestamp: number };
+        const prices = await BackendService.getPrices();
         
         UIBuilder.updatePrices(prices.btc, prices.sol);
         log(`✅ Updated prices - BTC: $${prices.btc.toFixed(2)}, SOL: $${prices.sol.toFixed(2)}`, 'success');
@@ -92,8 +107,8 @@ async function loadPolymarketEvents() {
         
         log('🔮 Fetching Polymarket events...', 'info');
         
-        // Call Rust backend via Tauri to bypass CORS
-        const polymarketData: any[] = await invoke('get_polymarket_events');
+        // Call via BackendService - which uses Rust backend to bypass CORS
+        const polymarketData: any[] = await BackendService.getPolymarketEvents();
         log(`✅ Loaded ${polymarketData.length} Polymarket events`, 'success');
         
         if (polymarketData.length > 0) {
@@ -134,12 +149,7 @@ async function placeBet(marketId: string, outcome: string, amount: number) {
         }
         
         log(`🎯 Placing ${outcome} bet for ${amount} BB on market ${marketId}...`, 'info');
-        await invoke('place_bet', {
-            account: selectedAccount.name,
-            market_id: marketId,
-            outcome: outcome,
-            amount: amount
-        });
+        await BackendService.placeBet(marketId, selectedAccount.name, amount, outcome);
         
         log(`✅ Bet placed successfully!`, 'success');
         await loadAccounts();
@@ -287,14 +297,54 @@ function populateTransferSelects() {
 function updateFromBalance() {
     const fromSelect = document.getElementById('transferFrom') as HTMLSelectElement;
     const balanceDisplay = document.getElementById('fromBalance') as HTMLElement;
+    const maxAvailable = document.getElementById('maxAvailable') as HTMLElement;
     
     if (!fromSelect || !balanceDisplay) return;
     
     const account = accounts.find(a => a.name === fromSelect.value);
     if (account) {
         balanceDisplay.textContent = account.balance.toString();
+        if (maxAvailable) {
+            maxAvailable.textContent = account.balance.toString();
+        }
     } else {
         balanceDisplay.textContent = '0';
+        if (maxAvailable) {
+            maxAvailable.textContent = '0';
+        }
+    }
+}
+
+function showTransferMessage(message: string, type: 'success' | 'error' | 'info') {
+    const messageEl = document.getElementById('transferMessage');
+    if (!messageEl) return;
+    
+    messageEl.textContent = message;
+    messageEl.className = `transfer-message show ${type}`;
+    
+    // Auto-clear success messages after 4 seconds
+    if (type === 'success') {
+        setTimeout(() => {
+            messageEl.classList.remove('show');
+        }, 4000);
+    }
+}
+
+function setQuickTransferAmount(amount: number) {
+    const fromSelect = document.getElementById('transferFrom') as HTMLSelectElement;
+    const amountInput = document.getElementById('transferAmount') as HTMLInputElement;
+    
+    if (!fromSelect.value) {
+        showTransferMessage('❌ Please select a sender account first', 'error');
+        return;
+    }
+    
+    const account = accounts.find(a => a.name === fromSelect.value);
+    if (account && account.balance >= amount) {
+        amountInput.value = amount.toString();
+        showTransferMessage(`📝 Set transfer amount to ${amount} BB`, 'info');
+    } else {
+        showTransferMessage(`❌ Insufficient balance. Available: ${account?.balance || 0} BB`, 'error');
     }
 }
 
@@ -303,45 +353,88 @@ async function executeTransfer() {
         const fromSelect = document.getElementById('transferFrom') as HTMLSelectElement;
         const toSelect = document.getElementById('transferTo') as HTMLSelectElement;
         const amountInput = document.getElementById('transferAmount') as HTMLInputElement;
+        const btn = document.getElementById('sendTransferBtn') as HTMLButtonElement;
         
         const fromAccount = fromSelect.value;
         const toAccount = toSelect.value;
         const amount = parseFloat(amountInput.value);
         
         if (!fromAccount || !toAccount || !amount || amount <= 0) {
+            showTransferMessage('❌ Please fill in all transfer fields', 'error');
             log('❌ Please fill in all transfer fields', 'error');
             return;
         }
         
         if (fromAccount === toAccount) {
+            showTransferMessage('❌ Cannot transfer to the same account', 'error');
             log('❌ Cannot transfer to the same account', 'error');
             return;
         }
         
         const fromAccountObj = accounts.find(a => a.name === fromAccount);
         if (!fromAccountObj || fromAccountObj.balance < amount) {
+            showTransferMessage(`❌ Insufficient balance. Available: ${fromAccountObj?.balance || 0} BB`, 'error');
             log('❌ Insufficient balance', 'error');
             return;
         }
         
-        log(`🔄 Transferring ${amount} BB from ${fromAccount} to ${toAccount}...`, 'info');
+        // Disable button and show loading state
+        btn.disabled = true;
+        btn.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">Processing...</span>';
         
-        await invoke('transfer', {
-            from: fromAccount,
-            to: toAccount,
-            amount: amount
-        });
+        log(`🔄 Transferring ${amount} BB from ${fromAccount} to ${toAccount}...`, 'info');
+        showTransferMessage(`⏳ Processing transfer of ${amount} BB...`, 'info');
+        
+        await BackendService.transfer(fromAccount, toAccount, amount);
         
         log(`✅ Transfer successful!`, 'success');
+        showTransferMessage(`✅ Successfully transferred ${amount} BB from ${fromAccount} to ${toAccount}!`, 'success');
         
+        // Reset form
         amountInput.value = '';
         fromSelect.value = '';
         toSelect.value = '';
         
+        const balanceDisplay = document.getElementById('fromBalance') as HTMLElement;
+        if (balanceDisplay) {
+            balanceDisplay.textContent = '0';
+        }
+        
+        // Re-enable button
+        btn.disabled = false;
+        btn.innerHTML = '<span class="btn-icon">📤</span><span class="btn-text">Send Transfer</span>';
+        
+        // Reload accounts to update balances
         await loadAccounts();
+        await updateTransferStats();
         
     } catch (error) {
         log(`❌ Transfer failed: ${error}`, 'error');
+        showTransferMessage(`❌ Transfer failed: ${error}`, 'error');
+        
+        const btn = document.getElementById('sendTransferBtn') as HTMLButtonElement;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="btn-icon">📤</span><span class="btn-text">Send Transfer</span>';
+        }
+    }
+}
+
+async function updateTransferStats() {
+    try {
+        const stats = await BackendService.getLedgerStats();
+        
+        const statsAccounts = document.getElementById('statsAccounts');
+        const statsVolume = document.getElementById('statsVolume');
+        const statsTransfers = document.getElementById('statsTransfers');
+        const statsBets = document.getElementById('statsBets');
+        
+        if (statsAccounts) statsAccounts.textContent = stats.totalAccounts.toString();
+        if (statsVolume) statsVolume.textContent = `${stats.totalVolume.toFixed(0)} BB`;
+        if (statsTransfers) statsTransfers.textContent = stats.totalTransactions.toString();
+        if (statsBets) statsBets.textContent = stats.totalBets.toString();
+    } catch (error) {
+        console.error('Failed to update transfer stats:', error);
     }
 }
 
@@ -364,7 +457,8 @@ async function init() {
         console.log('✅ Setting up event listeners...');
         setupEventListeners();
         
-        // Initialize debug console now
+        // Initialize debug console with welcome message
+        log('🎯 Welcome to the BlackBook', 'success');
         log('⚡ Initializing BlackBook L1 Desktop App...', 'info');
         
         // Load data
@@ -406,7 +500,10 @@ function setupEventListeners() {
     // Transfers button
     const transfersBtn = document.getElementById('transfersBtn');
     if (transfersBtn) {
-        transfersBtn.addEventListener('click', () => switchPage('transfers'));
+        transfersBtn.addEventListener('click', () => {
+            switchPage('transfers');
+            updateTransferStats();
+        });
     }
     
     // Back button
@@ -424,6 +521,22 @@ function setupEventListeners() {
     const sendBtn = document.getElementById('sendTransferBtn');
     if (sendBtn) {
         sendBtn.addEventListener('click', executeTransfer);
+    }
+    
+    // Quick transfer buttons
+    const quickTransfer50 = document.getElementById('quickTransfer50');
+    if (quickTransfer50) {
+        quickTransfer50.addEventListener('click', () => setQuickTransferAmount(50));
+    }
+    
+    const quickTransfer100 = document.getElementById('quickTransfer100');
+    if (quickTransfer100) {
+        quickTransfer100.addEventListener('click', () => setQuickTransferAmount(100));
+    }
+    
+    const quickTransfer500 = document.getElementById('quickTransfer500');
+    if (quickTransfer500) {
+        quickTransfer500.addEventListener('click', () => setQuickTransferAmount(500));
     }
     
     // Close dropdown when clicking outside
@@ -445,3 +558,5 @@ document.addEventListener('DOMContentLoaded', init);
 (window as any).switchPage = switchPage;
 (window as any).updateFromBalance = updateFromBalance;
 (window as any).executeTransfer = executeTransfer;
+(window as any).setQuickTransferAmount = setQuickTransferAmount;
+(window as any).updateTransferStats = updateTransferStats;

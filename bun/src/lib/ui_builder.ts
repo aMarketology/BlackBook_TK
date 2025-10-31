@@ -28,8 +28,7 @@ export class UIBuilder {
         transfersContainer.classList.add('hidden');
         container.appendChild(transfersContainer);
         
-        // Add footer with debug console
-        container.appendChild(this.buildFooter());
+        // Note: Debug console footer is built and managed by DebugConsole class
         
         return container;
     }
@@ -175,6 +174,7 @@ static buildMainContent(): HTMLElement {
      */
     static buildTransfersPage(): HTMLElement {
         const page = document.createElement('div');
+        page.id = 'transfersPage';
         page.className = 'page';
         
         // Page header
@@ -182,62 +182,106 @@ static buildMainContent(): HTMLElement {
         pageHeader.className = 'page-header';
         pageHeader.innerHTML = `
             <button class="back-btn" id="backBtn">← Back to Markets</button>
-            <h2>🔄 Transfer Tokens</h2>
+            <h2>🔄 Admin Transfer Panel</h2>
+            <p class="page-subtitle">Transfer BlackBook tokens between accounts</p>
         `;
         page.appendChild(pageHeader);
         
         // Page content
         const pageContent = document.createElement('div');
         pageContent.className = 'page-content';
-        
-        const transferForm = document.createElement('div');
-        transferForm.className = 'transfer-form';
-        transferForm.innerHTML = `
-            <div class="form-group">
-                <label for="transferFrom">From Account:</label>
-                <select id="transferFrom" class="form-input">
-                    <option value="">Select sender...</option>
-                </select>
-                <div class="balance-info">
-                    <span>Balance: <span id="fromBalance">0</span> BB</span>
+        pageContent.innerHTML = `
+            <div class="transfer-container">
+                <!-- Transfer Form Card -->
+                <div class="transfer-card">
+                    <h3>💸 Transfer Tokens</h3>
+                    
+                    <div class="form-group">
+                        <label for="transferFrom">
+                            <span class="label-text">From Account:</span>
+                            <span class="required">*</span>
+                        </label>
+                        <select id="transferFrom" class="form-input">
+                            <option value="">Select sender...</option>
+                        </select>
+                        <div class="balance-display">
+                            <span class="balance-label">Available:</span>
+                            <span class="balance-value"><span id="fromBalance">0</span> BB</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transferTo">
+                            <span class="label-text">To Account:</span>
+                            <span class="required">*</span>
+                        </label>
+                        <select id="transferTo" class="form-input">
+                            <option value="">Select recipient...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transferAmount">
+                            <span class="label-text">Amount (BB):</span>
+                            <span class="required">*</span>
+                        </label>
+                        <input type="number" id="transferAmount" class="form-input" 
+                            placeholder="Enter amount" min="0" step="1" value="">
+                        <div class="hint-text">Max available: <span id="maxAvailable">0</span> BB</div>
+                    </div>
+                    
+                    <div class="transfer-message" id="transferMessage"></div>
+                    
+                    <button class="btn btn-primary btn-large" id="sendTransferBtn">
+                        <span class="btn-icon">📤</span>
+                        <span class="btn-text">Send Transfer</span>
+                    </button>
+                </div>
+                
+                <!-- Quick Transfer Templates -->
+                <div class="quick-actions">
+                    <h4>⚡ Quick Actions</h4>
+                    <button class="quick-btn" id="quickTransfer50">Transfer 50 BB</button>
+                    <button class="quick-btn" id="quickTransfer100">Transfer 100 BB</button>
+                    <button class="quick-btn" id="quickTransfer500">Transfer 500 BB</button>
                 </div>
             </div>
-            <div class="form-group">
-                <label for="transferTo">To Account:</label>
-                <select id="transferTo" class="form-input">
-                    <option value="">Select recipient...</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="transferAmount">Amount (BB):</label>
-                <input type="number" id="transferAmount" class="form-input" placeholder="Enter amount" min="0" step="1">
-            </div>
-            <button class="btn btn-primary" id="sendTransferBtn">Send Transfer</button>
         `;
-        
-        pageContent.appendChild(transferForm);
+        pageContent.appendChild(this.createTransferStatsPanel());
         page.appendChild(pageContent);
         
         return page;
     }
 
     /**
-     * Build footer with debug console
+     * Create transfer stats panel showing recent transfers
      */
-    static buildFooter(): HTMLElement {
-        const footer = document.createElement('footer');
-        footer.className = 'footer';
-        
-        const debugConsole = document.createElement('div');
-        debugConsole.id = 'debugConsole';
-        debugConsole.className = 'debug-console';
-        debugConsole.innerHTML = '<div class="console-header">🐛 Debug Console</div>';
-        
-        footer.appendChild(debugConsole);
-        
-        return footer;
+    static createTransferStatsPanel(): HTMLElement {
+        const statsPanel = document.createElement('div');
+        statsPanel.className = 'transfer-stats-panel';
+        statsPanel.innerHTML = `
+            <h3>📊 Transfer Statistics</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Total Accounts</div>
+                    <div class="stat-value" id="statsAccounts">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total Volume</div>
+                    <div class="stat-value" id="statsVolume">0 BB</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total Transfers</div>
+                    <div class="stat-value" id="statsTransfers">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total Bets</div>
+                    <div class="stat-value" id="statsBets">0</div>
+                </div>
+            </div>
+        `;
+        return statsPanel;
     }
-
     /**
      * Populate accounts list in header
      */
