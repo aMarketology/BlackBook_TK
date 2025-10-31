@@ -5,13 +5,14 @@
 
 import { invoke } from '@tauri-apps/api/tauri';
 import { debugConsole } from './lib/debug_console';
-import { getPolymarketEvents, formatVolume } from './lib/polymarket';
+import { formatVolume } from './lib/polymarket';
+import { UIBuilder } from './lib/ui_builder';
 
 // ============================================
 // INTERFACES
 // ============================================
 
-interface Account {
+export interface Account {
     name: string;
     address: string;
     balance: number;
@@ -74,53 +75,54 @@ async function updatePrices() {
         log('📈 Fetching live prices from CoinGecko...', 'info');
         const prices = await invoke('get_prices') as { btc: number; sol: number; timestamp: number };
         
-        const btcEl = document.getElementById('btcPrice');
-        const solEl = document.getElementById('solPrice');
-        
-        const formatPrice = (price: number) => `$${price.toFixed(2)}`;
-        
-        if (btcEl) btcEl.textContent = formatPrice(prices.btc);
-        if (solEl) solEl.textContent = formatPrice(prices.sol);
-        
-        log(`✅ Updated prices - BTC: ${formatPrice(prices.btc)}, SOL: ${formatPrice(prices.sol)}`, 'success');
+        UIBuilder.updatePrices(prices.btc, prices.sol);
+        log(`✅ Updated prices - BTC: $${prices.btc.toFixed(2)}, SOL: $${prices.sol.toFixed(2)}`, 'success');
     } catch (error) {
         log(`⚠️ Price update failed: ${error}`, 'warning');
-        const btcEl = document.getElementById('btcPrice');
-        const solEl = document.getElementById('solPrice');
-        if (btcEl) btcEl.textContent = 'API Error';
-        if (solEl) solEl.textContent = 'API Error';
     }
 }
 
 async function loadPolymarketEvents() {
     try {
+        const polyEl = document.getElementById('polymarketEvents');
+        if (!polyEl) {
+            log('⚠️ Polymarket Events element not found', 'warning');
+            return;
+        }
+        
         log('🔮 Fetching Polymarket events...', 'info');
-        const polymarketData = await getPolymarketEvents();
+        
+        // Call Rust backend via Tauri to bypass CORS
+        const polymarketData: any[] = await invoke('get_polymarket_events');
         log(`✅ Loaded ${polymarketData.length} Polymarket events`, 'success');
         
-        // Could display these in a separate section, or add to markets
-        const polyEl = document.getElementById('polymarketEvents');
-        if (polyEl && polymarketData.length > 0) {
+        if (polymarketData.length > 0) {
             polyEl.innerHTML = polymarketData.map(m => `
                 <div class="market-card">
                     <h3>${m.question}</h3>
-                    <p>${m.description}</p>
+                    <p>${m.description || 'No description'}</p>
                     <div class="market-prices">
                         <div class="price-column">
                             <span class="label">${m.outcomes[0] || 'YES'}</span>
-                            <span class="price">${(m.outcomesPrices[0] * 100).toFixed(0)}¢</span>
+                            <span class="price">${(m.outcome_prices[0] * 100).toFixed(0)}¢</span>
                         </div>
                         <div class="price-column">
                             <span class="label">${m.outcomes[1] || 'NO'}</span>
-                            <span class="price">${(m.outcomesPrices[1] * 100).toFixed(0)}¢</span>
+                            <span class="price">${(m.outcome_prices[1] * 100).toFixed(0)}¢</span>
                         </div>
                     </div>
-                    <div class="market-volume">Vol: ${formatVolume(m.volume)}</div>
+                    <div class="market-volume">Vol: ${formatVolume(m.volume_24h || m.volume || 0)}</div>
                 </div>
             `).join('');
+        } else {
+            polyEl.innerHTML = '<p class="loading">No Polymarket events available</p>';
         }
     } catch (error) {
         log(`⚠️ Polymarket fetch failed: ${error}`, 'warning');
+        const polyEl = document.getElementById('polymarketEvents');
+        if (polyEl) {
+            polyEl.innerHTML = `<p class="loading">Error loading Polymarket events: ${error}</p>`;
+        }
     }
 }
 
@@ -151,22 +153,8 @@ async function placeBet(marketId: string, outcome: string, amount: number) {
 // ============================================
 
 function renderAccounts() {
-    const list = document.getElementById('accountsList');
-    if (!list) {
-        console.error('accountsList element not found');
-        return;
-    }
-    
-    console.log('Rendering accounts:', accounts.length);
-    
-    list.innerHTML = accounts.map(acc => `
-        <div class="account-item ${selectedAccount?.name === acc.name ? 'active' : ''}" onclick="selectAccount('${acc.name}')">
-            <div class="account-name">${acc.name}</div>
-            <div class="account-balance">${acc.balance.toFixed(2)} BB</div>
-        </div>
-    `).join('');
-    
-    // Update the toggle button text
+    UIBuilder.populateAccountsList(accounts);
+    UIBuilder.populateTransferSelects(accounts);
     updateAccountsToggleDisplay();
 }
 
@@ -206,22 +194,9 @@ function selectAccount(accountName: string) {
     if (selectedAccount) {
         log(`📌 Selected account: ${selectedAccount.name}`, 'info');
     }
-    renderAccounts();
-    updateAccountInfo();
+    UIBuilder.updateSelectedAccount(selectedAccount);
+    updateAccountsToggleDisplay();
     closeAccountsDropdown();
-}
-
-function updateAccountInfo() {
-    const addressEl = document.getElementById('selectedAddress');
-    const balanceEl = document.getElementById('selectedBalance');
-    
-    if (selectedAccount) {
-        if (addressEl) addressEl.textContent = selectedAccount.address;
-        if (balanceEl) balanceEl.textContent = `${selectedAccount.balance.toFixed(2)} BB`;
-    } else {
-        if (addressEl) addressEl.textContent = '--';
-        if (balanceEl) balanceEl.textContent = '0 BB';
-    }
 }
 
 function updateAccountsToggleDisplay() {
@@ -265,21 +240,192 @@ function closeAccountsDropdown() {
 // INITIALIZATION
 // ============================================
 
-async function init() {
-    log('⚡ Initializing BlackBook L1 Desktop App...', 'info');
-    await loadAccounts();
-    await loadMarkets();
+// ============================================
+// PAGE SWITCHING & TRANSFERS
+// ============================================
+
+function switchPage(page: string) {
+    const mainContent = document.querySelector('.main-content') as HTMLElement;
+    const transfersPage = document.getElementById('transfersPage') as HTMLElement;
     
-    // Fetch real market prices and Polymarket data
-    await updatePrices();
-    await loadPolymarketEvents();
-    
-    // Update prices every 30 seconds
-    setInterval(updatePrices, 30000);
+    if (page === 'transfers') {
+        log('🔄 Opening Transfers Page...', 'info');
+        if (mainContent) mainContent.classList.add('hidden');
+        if (transfersPage) {
+            transfersPage.classList.remove('hidden');
+            populateTransferSelects();
+        }
+    } else if (page === 'markets') {
+        log('📊 Returning to Markets...', 'info');
+        if (mainContent) mainContent.classList.remove('hidden');
+        if (transfersPage) transfersPage.classList.add('hidden');
+    }
 }
 
-// Start app when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+function populateTransferSelects() {
+    const fromSelect = document.getElementById('transferFrom') as HTMLSelectElement;
+    const toSelect = document.getElementById('transferTo') as HTMLSelectElement;
+    
+    if (!fromSelect || !toSelect) return;
+    
+    fromSelect.innerHTML = '<option value="">Select sender...</option>';
+    toSelect.innerHTML = '<option value="">Select recipient...</option>';
+    
+    accounts.forEach(account => {
+        const fromOption = document.createElement('option');
+        fromOption.value = account.name;
+        fromOption.textContent = `${account.name} (${account.balance} BB)`;
+        fromSelect.appendChild(fromOption);
+        
+        const toOption = document.createElement('option');
+        toOption.value = account.name;
+        toOption.textContent = account.name;
+        toSelect.appendChild(toOption);
+    });
+}
+
+function updateFromBalance() {
+    const fromSelect = document.getElementById('transferFrom') as HTMLSelectElement;
+    const balanceDisplay = document.getElementById('fromBalance') as HTMLElement;
+    
+    if (!fromSelect || !balanceDisplay) return;
+    
+    const account = accounts.find(a => a.name === fromSelect.value);
+    if (account) {
+        balanceDisplay.textContent = account.balance.toString();
+    } else {
+        balanceDisplay.textContent = '0';
+    }
+}
+
+async function executeTransfer() {
+    try {
+        const fromSelect = document.getElementById('transferFrom') as HTMLSelectElement;
+        const toSelect = document.getElementById('transferTo') as HTMLSelectElement;
+        const amountInput = document.getElementById('transferAmount') as HTMLInputElement;
+        
+        const fromAccount = fromSelect.value;
+        const toAccount = toSelect.value;
+        const amount = parseFloat(amountInput.value);
+        
+        if (!fromAccount || !toAccount || !amount || amount <= 0) {
+            log('❌ Please fill in all transfer fields', 'error');
+            return;
+        }
+        
+        if (fromAccount === toAccount) {
+            log('❌ Cannot transfer to the same account', 'error');
+            return;
+        }
+        
+        const fromAccountObj = accounts.find(a => a.name === fromAccount);
+        if (!fromAccountObj || fromAccountObj.balance < amount) {
+            log('❌ Insufficient balance', 'error');
+            return;
+        }
+        
+        log(`🔄 Transferring ${amount} BB from ${fromAccount} to ${toAccount}...`, 'info');
+        
+        await invoke('transfer', {
+            from: fromAccount,
+            to: toAccount,
+            amount: amount
+        });
+        
+        log(`✅ Transfer successful!`, 'success');
+        
+        amountInput.value = '';
+        fromSelect.value = '';
+        toSelect.value = '';
+        
+        await loadAccounts();
+        
+    } catch (error) {
+        log(`❌ Transfer failed: ${error}`, 'error');
+    }
+}
+
+async function init() {
+    console.log('🚀 Starting app initialization...');
+    
+    try {
+        // Build UI
+        const app = document.getElementById('app');
+        if (!app) {
+            console.error('❌ App container not found');
+            return;
+        }
+        
+        console.log('✅ Building UI...');
+        app.appendChild(UIBuilder.buildApp());
+        console.log('✅ UI built successfully');
+        
+        // Setup event listeners
+        console.log('✅ Setting up event listeners...');
+        setupEventListeners();
+        
+        // Initialize debug console now
+        log('⚡ Initializing BlackBook L1 Desktop App...', 'info');
+        
+        // Load data
+        await loadAccounts();
+        await loadMarkets();
+        
+        // Fetch real market prices and Polymarket data
+        await updatePrices();
+        await loadPolymarketEvents();
+        
+        // Update prices every 30 seconds
+        setInterval(updatePrices, 30000);
+        
+        log('✅ App initialized successfully!', 'success');
+    } catch (error) {
+        console.error('❌ Initialization error:', error);
+        log(`❌ Failed to initialize: ${error}`, 'error');
+    }
+}
+
+function setupEventListeners() {
+    // Accounts dropdown
+    const toggle = document.getElementById('accountsToggle');
+    if (toggle) {
+        toggle.addEventListener('click', toggleAccountsDropdown);
+    }
+    
+    // Account selection
+    const accountsList = document.getElementById('accountsList');
+    if (accountsList) {
+        accountsList.addEventListener('click', (e: any) => {
+            if (e.target.classList.contains('account-item')) {
+                const accountName = e.target.dataset.account;
+                selectAccount(accountName);
+            }
+        });
+    }
+    
+    // Transfers button
+    const transfersBtn = document.getElementById('transfersBtn');
+    if (transfersBtn) {
+        transfersBtn.addEventListener('click', () => switchPage('transfers'));
+    }
+    
+    // Back button
+    const backBtn = document.getElementById('backBtn');
+    if (backBtn) {
+        backBtn.addEventListener('click', () => switchPage('markets'));
+    }
+    
+    // Transfer form
+    const fromSelect = document.getElementById('transferFrom') as HTMLSelectElement;
+    if (fromSelect) {
+        fromSelect.addEventListener('change', updateFromBalance);
+    }
+    
+    const sendBtn = document.getElementById('sendTransferBtn');
+    if (sendBtn) {
+        sendBtn.addEventListener('click', executeTransfer);
+    }
+    
     // Close dropdown when clicking outside
     document.addEventListener('click', (e: any) => {
         const selector = document.querySelector('.accounts-selector');
@@ -287,11 +433,15 @@ document.addEventListener('DOMContentLoaded', () => {
             closeAccountsDropdown();
         }
     });
-    
-    init();
-});
+}
+
+// Start app when DOM is ready
+document.addEventListener('DOMContentLoaded', init);
 
 // Expose functions globally for inline event handlers
 (window as any).selectAccount = selectAccount;
 (window as any).placeBet = placeBet;
 (window as any).toggleAccountsDropdown = toggleAccountsDropdown;
+(window as any).switchPage = switchPage;
+(window as any).updateFromBalance = updateFromBalance;
+(window as any).executeTransfer = executeTransfer;

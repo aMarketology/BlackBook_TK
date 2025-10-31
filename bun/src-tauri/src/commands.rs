@@ -347,3 +347,30 @@ pub async fn get_prices() -> Result<PriceResponse, String> {
             .unwrap_or(0),
     })
 }
+
+/// Fetch Polymarket events from Gamma API
+#[tauri::command]
+pub async fn get_polymarket_events() -> Result<Vec<serde_json::Value>, String> {
+    let client = reqwest::Client::new();
+    
+    let response = client
+        .get("https://gamma-api.polymarket.com/markets")
+        .query(&[("limit", "50"), ("active", "true")])
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch Polymarket events: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("Polymarket API error: {}", response.status()));
+    }
+
+    let mut markets: Vec<serde_json::Value> = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse Polymarket response: {}", e))?;
+
+    // Take only the first 7 markets
+    markets.truncate(7);
+    
+    Ok(markets)
+}
