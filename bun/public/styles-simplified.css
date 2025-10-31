@@ -162,6 +162,37 @@ html, body {
     font-family: 'Courier New', monospace;
 }
 
+/* Price Display */
+.price-display {
+    background: var(--charcoal);
+    border: 1px solid var(--dark-gray);
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.price-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 0.95rem;
+    border-bottom: 1px solid var(--dark-gray);
+}
+
+.price-row:last-child {
+    border-bottom: none;
+}
+
+.price-row .label {
+    color: var(--gold-accent);
+    font-weight: bold;
+}
+
+.price-row .price {
+    color: var(--page-yellow);
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+}
+
 /* Center Content */
 .center-content {
     flex: 1;
