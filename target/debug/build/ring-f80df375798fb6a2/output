@@ -1,3 +1,0 @@
-cargo:rustc-link-lib=static=ring-core
-cargo:rustc-link-lib=static=ring-test
-cargo:rustc-link-search=native=/Users/thelegendofzjui/Documents/GitHub/BlackBook_TK/target/debug/build/ring-f80df375798fb6a2/out
