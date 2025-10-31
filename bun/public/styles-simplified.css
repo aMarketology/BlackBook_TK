@@ -1,0 +1,373 @@
+/**
+ * BlackBook L1 - Simplified Death Note Inspired CSS
+ * Focus on core UI elements only
+ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --death-black: #0a0a0a;
+    --deep-black: #1a1a1a;
+    --dark-gray: #3a3a3a;
+    --death-red: #e63946;
+    --gold-accent: #d4a574;
+    --page-yellow: #f5deb3;
+    --white-text: #f0f0f0;
+    --pale-text: #c0c0c0;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    font-family: 'Georgia', serif;
+    background: var(--death-black);
+    color: var(--white-text);
+    overflow: hidden;
+}
+
+/* Layout */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--death-black);
+}
+
+.header {
+    padding: 20px;
+    background: linear-gradient(180deg, var(--deep-black) 0%, var(--death-black) 100%);
+    border-bottom: 2px solid var(--death-red);
+    box-shadow: 0 4px 20px rgba(230, 57, 70, 0.2);
+}
+
+.header h1 {
+    font-size: 2rem;
+    color: var(--page-yellow);
+    text-shadow: 0 0 15px rgba(230, 57, 70, 0.3);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+}
+
+.network-info {
+    display: flex;
+    gap: 12px;
+}
+
+.badge {
+    padding: 6px 12px;
+    background: rgba(230, 57, 70, 0.2);
+    border: 1px solid var(--death-red);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: var(--gold-accent);
+}
+
+/* Main Content */
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    gap: 20px;
+    padding: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    background: var(--deep-black);
+    border: 1px solid var(--dark-gray);
+    border-radius: 4px;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+.sidebar h2 {
+    font-size: 1.3rem;
+    color: var(--gold-accent);
+    margin-top: 16px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--dark-gray);
+    padding-bottom: 8px;
+}
+
+.sidebar h2:first-child {
+    margin-top: 0;
+}
+
+.accounts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.account-item {
+    padding: 12px;
+    background: var(--charcoal);
+    border: 1px solid var(--dark-gray);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.account-item:hover {
+    border-color: var(--death-red);
+    background: rgba(230, 57, 70, 0.1);
+}
+
+.account-item.active {
+    background: rgba(230, 57, 70, 0.2);
+    border-color: var(--death-red);
+    color: var(--page-yellow);
+}
+
+.account-name {
+    font-weight: bold;
+    color: var(--page-yellow);
+}
+
+.account-balance {
+    font-size: 0.85rem;
+    color: var(--pale-text);
+    margin-top: 4px;
+}
+
+.account-info {
+    background: var(--charcoal);
+    border: 1px solid var(--dark-gray);
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--dark-gray);
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-row .label {
+    color: var(--gold-accent);
+}
+
+.info-row .value {
+    color: var(--white-text);
+    font-family: 'Courier New', monospace;
+}
+
+/* Center Content */
+.center-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.center-content h2 {
+    font-size: 1.5rem;
+    color: var(--page-yellow);
+    margin-bottom: 12px;
+    text-shadow: 0 0 10px rgba(230, 57, 70, 0.2);
+}
+
+.markets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.markets-grid::-webkit-scrollbar {
+    width: 8px;
+}
+
+.markets-grid::-webkit-scrollbar-track {
+    background: var(--death-black);
+}
+
+.markets-grid::-webkit-scrollbar-thumb {
+    background: var(--dark-gray);
+    border-radius: 4px;
+}
+
+.market-card {
+    background: var(--deep-black);
+    border: 1px solid var(--dark-gray);
+    border-radius: 4px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.market-card:hover {
+    border-color: var(--death-red);
+    box-shadow: 0 0 20px rgba(230, 57, 70, 0.2);
+}
+
+.market-card h3 {
+    font-size: 1.1rem;
+    color: var(--page-yellow);
+    margin-bottom: 8px;
+}
+
+.market-card p {
+    font-size: 0.9rem;
+    color: var(--pale-text);
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+.market-prices {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--dark-gray);
+}
+
+.price-column {
+    flex: 1;
+    text-align: center;
+}
+
+.price-column .label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--gold-accent);
+    margin-bottom: 4px;
+}
+
+.price-column .price {
+    display: block;
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: var(--death-red);
+    font-family: 'Courier New', monospace;
+}
+
+.market-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-bet {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--death-red);
+    background: rgba(230, 57, 70, 0.1);
+    color: var(--death-red);
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+.btn-bet:hover {
+    background: var(--death-red);
+    color: var(--page-yellow);
+}
+
+.loading {
+    text-align: center;
+    color: var(--pale-text);
+    padding: 20px;
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--pale-text);
+    padding: 40px 20px;
+}
+
+/* Footer - Debug Console */
+.footer {
+    height: 200px;
+    background: var(--deep-black);
+    border-top: 2px solid var(--death-red);
+    overflow: hidden;
+}
+
+.debug-console {
+    height: 100%;
+    background: var(--death-black);
+    border: 1px solid var(--dark-gray);
+    margin: 8px;
+    padding: 8px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+}
+
+.debug-console::-webkit-scrollbar {
+    width: 6px;
+}
+
+.debug-console::-webkit-scrollbar-track {
+    background: var(--death-black);
+}
+
+.debug-console::-webkit-scrollbar-thumb {
+    background: var(--dark-gray);
+    border-radius: 3px;
+}
+
+.console-header {
+    color: var(--death-red);
+    font-weight: bold;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--dark-gray);
+}
+
+.console-message {
+    padding: 4px 0;
+    line-height: 1.4;
+}
+
+.console-info {
+    color: var(--pale-text);
+}
+
+.console-success {
+    color: #00d084;
+}
+
+.console-warning {
+    color: var(--page-yellow);
+}
+
+.console-error {
+    color: var(--death-red);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--death-black);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--dark-gray);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--medium-gray);
+}
+
+/* Text Selection */
+::selection {
+    background: var(--death-red);
+    color: var(--page-yellow);
+}

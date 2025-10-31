@@ -1,0 +1,194 @@
+# ============================================================================
+# BlackBook L1 Blockchain - .gitignore
+# ============================================================================
+
+# ============================================================================
+# macOS
+# ============================================================================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+/target
+
+# ============================================================================
+# Rust / Cargo
+# ============================================================================
+# Compiled files
+target/
+**/*.rs.bk
+*.pdb
+
+# Cargo lock file (keep for binaries, ignore for libraries)
+# Cargo.lock  # Uncomment if this is a library
+
+# Cargo build artifacts
+Cargo.lock
+
+
+
+# ============================================================================
+# Tauri
+# ============================================================================
+# Tauri build artifacts
+**/src-tauri/target/
+**/WixTools/
+*.msi
+*.exe
+*.app
+*.dmg
+*.deb
+*.AppImage
+
+# Tauri logs
+**/src-tauri/*.log
+
+# ============================================================================
+# Bun
+# ============================================================================
+node_modules/
+bun.lockb
+.bun/
+
+# ============================================================================
+# TypeScript / JavaScript
+# ============================================================================
+# Compiled output
+dist/
+dist-ssr/
+*.local
+*.tsbuildinfo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor directories and files
+.vscode/
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ============================================================================
+# Environment Variables
+# ============================================================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# ============================================================================
+# Build artifacts
+# ============================================================================
+build/
+out/
+*.zip
+*.tar.gz
+
+# ============================================================================
+# OS generated files
+# ============================================================================
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ============================================================================
+# IDE
+# ============================================================================
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.idea_modules/
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ============================================================================
+# Testing
+# ============================================================================
+coverage/
+.nyc_output/
+*.lcov
+
+# ============================================================================
+# Temporary files
+# ============================================================================
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.*.swp
+
+# ============================================================================
+# Package managers
+# ============================================================================
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ============================================================================
+# Project specific
+# ============================================================================
+# Debug/test files
+debug.log
+test.db
+*.sqlite
+
+# Documentation build
+docs/_build/
+site/
+
+# Cache directories
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.turbo/
+
+# ============================================================================
+# Git merge artifacts
+# ============================================================================
+*.orig
+*.BACKUP.*
+*.BASE.*
+*.LOCAL.*
+*.REMOTE.*
+*_BACKUP_*.txt
+*_BASE_*.txt
+*_LOCAL_*.txt
+*_REMOTE_*.txt

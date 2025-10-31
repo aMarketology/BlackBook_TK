@@ -3,23 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎯 BlackBook L1 Prediction Market</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>🎯 BlackBook L1</title>
+    <link rel="stylesheet" href="styles-simplified.css">
 </head>
 <body>
     <div class="app-container">
         <!-- Header -->
         <header class="header">
-            <div class="header-left">
-                <h1>🎯 BlackBook L1</h1>
-                <div class="network-info">
-                    <span class="network-badge">🔗 Layer 1 Blockchain</span>
-                    <span class="token-badge">💎 BB Token</span>
-                    <span class="accounts-badge">📊 8 Test Accounts</span>
-                </div>
-            </div>
-            <div class="header-right">
-                <button id="adminBtn" class="admin-button">👑 Admin Panel</button>
+            <h1>🎯 BlackBook L1 Prediction Market</h1>
+            <div class="network-info">
+                <span class="badge">🔗 Layer 1 Blockchain</span>
+                <span class="badge">💎 BB Token</span>
+                <span class="badge">📊 8 Accounts</span>
             </div>
         </header>
 
@@ -27,170 +22,41 @@
         <div class="main-content">
             <!-- Sidebar -->
             <aside class="sidebar">
-                <div class="sidebar-section">
-                    <h3>🏦 L1 Accounts</h3>
-                    <div id="accountsList" class="accounts-list">
-                        <!-- Accounts will be populated by JS -->
-                    </div>
+                <h2>🏦 L1 Accounts</h2>
+                <div id="accountsList" class="accounts-list">
+                    <p class="loading">Loading accounts...</p>
                 </div>
 
-                <div class="sidebar-section">
-                    <h3>📊 Selected Account</h3>
-                    <div class="selected-account">
-                        <select id="accountSelect" class="account-select">
-                            <option value="">Select Account</option>
-                        </select>
-                        <div id="accountInfo" class="account-info">
-                            <div class="account-detail">
-                                <span class="label">Address:</span>
-                                <span id="selectedAddress" class="value">--</span>
-                            </div>
-                            <div class="account-detail">
-                                <span class="label">Balance:</span>
-                                <span id="selectedBalance" class="value">0 BB</span>
-                            </div>
-                        </div>
+                <h2>👤 Selected Account</h2>
+                <div class="account-info">
+                    <div class="info-row">
+                        <span class="label">Address:</span>
+                        <span id="selectedAddress" class="value">--</span>
                     </div>
-                </div>
-
-                <div class="sidebar-section">
-                    <h3>📈 Market Prices</h3>
-                    <div class="price-feed">
-                        <div class="price-item">
-                            <span class="crypto-name">Bitcoin</span>
-                            <span id="btcPrice" class="price">$--</span>
-                        </div>
-                        <div class="price-item">
-                            <span class="crypto-name">Solana</span>
-                            <span id="solPrice" class="price">$--</span>
-                        </div>
+                    <div class="info-row">
+                        <span class="label">Balance:</span>
+                        <span id="selectedBalance" class="value">0 BB</span>
                     </div>
                 </div>
             </aside>
 
             <!-- Center Content -->
             <main class="center-content">
-                <!-- Prediction Markets -->
-                <section class="markets-section">
-                    <h2>📊 Active Prediction Markets</h2>
-                    <div id="marketsList" class="markets-grid">
-                        <!-- Markets will be populated by JS -->
-                    </div>
-                </section>
-
-                <!-- Betting Panel -->
-                <section class="betting-section">
-                    <h2>🎯 Place Bet</h2>
-                    <div class="betting-panel">
-                        <div class="bet-form">
-                            <div class="form-group">
-                                <label>Market</label>
-                                <select id="marketSelect" class="market-select">
-                                    <option value="">Select Market</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Bet Amount (BB)</label>
-                                <input type="number" id="betAmount" class="bet-amount" min="1" step="1" placeholder="Enter amount">
-                                <div class="quick-amounts">
-                                    <button class="quick-bet" data-amount="10">10 BB</button>
-                                    <button class="quick-bet" data-amount="50">50 BB</button>
-                                    <button class="quick-bet" data-amount="100">100 BB</button>
-                                    <button class="quick-bet" data-amount="250">250 BB</button>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Prediction</label>
-                                <div class="outcome-buttons">
-                                    <button id="higherBtn" class="outcome-btn higher" data-outcome="YES">📈 YES</button>
-                                    <button id="lowerBtn" class="outcome-btn lower" data-outcome="NO">📉 NO</button>
-                                </div>
-                            </div>
-
-                            <button id="placeBetBtn" class="place-bet-btn" disabled>Place Bet</button>
-                        </div>
-                    </div>
-                </section>
+                <h2>📊 Active Markets</h2>
+                <div id="marketsList" class="markets-grid">
+                    <p class="loading">Loading markets...</p>
+                </div>
             </main>
-
-            <!-- Right Sidebar -->
-            <aside class="right-sidebar">
-                <!-- Debug Console -->
-                <section class="debug-section">
-                    <div class="debug-header">
-                        <h3>🐛 Debug Console</h3>
-                        <button id="clearConsole" class="clear-btn">Clear</button>
-                    </div>
-                    <div id="debugConsole" class="debug-console">
-                        <div class="console-message">Console ready...</div>
-                    </div>
-                </section>
-
-                <!-- Stats Panel -->
-                <section class="stats-section">
-                    <h3>📊 Network Stats</h3>
-                    <div id="networkStats" class="network-stats">
-                        <!-- Stats will be populated by JS -->
-                    </div>
-                </section>
-            </aside>
         </div>
+
+        <!-- Debug Console -->
+        <footer class="footer">
+            <div id="debugConsole" class="debug-console">
+                <div class="console-header">� Debug Console</div>
+            </div>
+        </footer>
     </div>
 
-    <!-- Admin Panel Modal -->
-    <div id="adminModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>👑 God Mode Admin Panel</h2>
-                <button id="closeAdminModal" class="close-btn">&times;</button>
-            </div>
-            
-            <div class="admin-content">
-                <div class="admin-section">
-                    <h3>🏦 All L1 Accounts</h3>
-                    <div id="adminAccountsList" class="admin-accounts">
-                        <!-- Will be populated by JS -->
-                    </div>
-                </div>
-                
-                <div class="admin-section">
-                    <h3>💰 Admin Actions</h3>
-                    <div class="admin-actions">
-                        <div class="action-group">
-                            <label>Deposit BB to Account:</label>
-                            <select id="adminDepositAccount" class="admin-select">
-                                <option value="">Select Account</option>
-                            </select>
-                            <input id="adminDepositAmount" type="number" placeholder="Amount" min="1" step="0.01" class="admin-input">
-                            <button id="adminDepositBtn" class="admin-btn">💎 Deposit</button>
-                        </div>
-                        
-                        <div class="action-group">
-                            <label>Transfer Between Accounts:</label>
-                            <select id="adminTransferFrom" class="admin-select">
-                                <option value="">From Account</option>
-                            </select>
-                            <select id="adminTransferTo" class="admin-select">
-                                <option value="">To Account</option>
-                            </select>
-                            <input id="adminTransferAmount" type="number" placeholder="Amount" min="0.01" step="0.01" class="admin-input">
-                            <button id="adminTransferBtn" class="admin-btn">🔄 Transfer</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="admin-section">
-                    <h3>📊 System Stats</h3>
-                    <div id="adminStats" class="admin-stats">
-                        <!-- Will be populated by JS -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script type="module" src="../dist/main.js"></script>
+    <script src="/js/main.js"></script>
 </body>
 </html>
