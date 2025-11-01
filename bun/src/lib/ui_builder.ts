@@ -28,6 +28,20 @@ export class UIBuilder {
         transfersContainer.classList.add('hidden');
         container.appendChild(transfersContainer);
         
+        // Add price action page (hidden by default)
+        const priceActionContainer = document.createElement('div');
+        priceActionContainer.id = 'priceActionContainer';
+        priceActionContainer.appendChild(this.buildPriceActionPage());
+        priceActionContainer.classList.add('hidden');
+        container.appendChild(priceActionContainer);
+        
+        // Add receipts page (hidden by default)
+        const receiptsContainer = document.createElement('div');
+        receiptsContainer.id = 'receiptsContainer';
+        receiptsContainer.appendChild(this.buildReceiptsPage());
+        receiptsContainer.classList.add('hidden');
+        container.appendChild(receiptsContainer);
+        
         // Note: Debug console footer is built and managed by DebugConsole class
         
         return container;
@@ -81,12 +95,12 @@ export class UIBuilder {
         accountsBadge.textContent = '📊 8 Accounts';
         networkInfo.appendChild(accountsBadge);
         
-        // Home button
-        const homeNavBtn = document.createElement('button');
-        homeNavBtn.className = 'badge badge-button';
-        homeNavBtn.id = 'homeNavBtn';
-        homeNavBtn.textContent = '🏠 Home';
-        networkInfo.appendChild(homeNavBtn);
+        // Home button (hidden for now)
+        // const homeNavBtn = document.createElement('button');
+        // homeNavBtn.className = 'badge badge-button';
+        // homeNavBtn.id = 'homeNavBtn';
+        // homeNavBtn.textContent = '🏠 Home';
+        // networkInfo.appendChild(homeNavBtn);
         
         // Transfers button
         const transfersBtn = document.createElement('button');
@@ -101,6 +115,13 @@ export class UIBuilder {
         priceActionBtn.id = 'priceActionBtn';
         priceActionBtn.textContent = '⚡ Price Action';
         networkInfo.appendChild(priceActionBtn);
+        
+        // Receipts button
+        const receiptsBtn = document.createElement('button');
+        receiptsBtn.className = 'badge badge-button';
+        receiptsBtn.id = 'receiptsBtn';
+        receiptsBtn.textContent = '📜 Receipts';
+        networkInfo.appendChild(receiptsBtn);
         
         headerLeft.appendChild(networkInfo);
         
@@ -330,6 +351,257 @@ static buildMainContent(): HTMLElement {
         `;
         return statsPanel;
     }
+
+    /**
+     * Build price action page
+     */
+    static buildPriceActionPage(): HTMLElement {
+        const page = document.createElement('div');
+        page.id = 'priceActionPage';
+        page.className = 'page';
+        
+        // Page header
+        const pageHeader = document.createElement('div');
+        pageHeader.className = 'page-header';
+        pageHeader.innerHTML = `
+            <button class="back-btn" id="backFromPriceActionBtn">← Back to Markets</button>
+            <h2>⚡ Price Action Trading</h2>
+            <p class="page-subtitle">Bet on Bitcoin & Solana price movements</p>
+        `;
+        page.appendChild(pageHeader);
+        
+        // Page content
+        const pageContent = document.createElement('div');
+        pageContent.className = 'page-content';
+        pageContent.innerHTML = `
+            <div class="price-action-container">
+                <!-- Live Prices Display -->
+                <div class="price-cards">
+                    <div class="price-card bitcoin-card">
+                        <div class="coin-header">
+                            <span class="coin-icon">₿</span>
+                            <h3>Bitcoin</h3>
+                        </div>
+                        <div class="current-price">
+                            <span class="price-label">Current Price</span>
+                            <span class="price-value" id="btcPriceAction">$0.00</span>
+                        </div>
+                        <div class="price-change" id="btcChange">+0.00%</div>
+                    </div>
+                    
+                    <div class="price-card solana-card">
+                        <div class="coin-header">
+                            <span class="coin-icon">◎</span>
+                            <h3>Solana</h3>
+                        </div>
+                        <div class="current-price">
+                            <span class="price-label">Current Price</span>
+                            <span class="price-value" id="solPriceAction">$0.00</span>
+                        </div>
+                        <div class="price-change" id="solChange">+0.00%</div>
+                    </div>
+                </div>
+
+                <!-- Betting Interface -->
+                <div class="betting-panel">
+                    <h3>🎯 Place Your Bet</h3>
+                    
+                    <!-- Asset Selection -->
+                    <div class="form-group">
+                        <label>Select Asset:</label>
+                        <div class="asset-buttons">
+                            <button class="asset-btn active" id="selectBitcoin" data-asset="bitcoin">
+                                ₿ Bitcoin
+                            </button>
+                            <button class="asset-btn" id="selectSolana" data-asset="solana">
+                                ◎ Solana
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Timeframe Selection -->
+                    <div class="form-group">
+                        <label>Select Timeframe:</label>
+                        <div class="timeframe-buttons">
+                            <button class="timeframe-btn active" id="timeframe1min" data-time="60">
+                                ⏱️ 1 Minute
+                            </button>
+                            <button class="timeframe-btn" id="timeframe15min" data-time="900">
+                                ⏲️ 15 Minutes
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Direction Selection -->
+                    <div class="form-group">
+                        <label>Predict Price Direction:</label>
+                        <div class="direction-buttons">
+                            <button class="direction-btn higher-btn" id="predictHigher">
+                                📈 HIGHER
+                            </button>
+                            <button class="direction-btn lower-btn" id="predictLower">
+                                📉 LOWER
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Bet Amount -->
+                    <div class="form-group">
+                        <label for="betAmount">
+                            <span class="label-text">Bet Amount (BB):</span>
+                            <span class="required">*</span>
+                        </label>
+                        <input 
+                            type="number" 
+                            id="betAmount" 
+                            placeholder="Enter amount in BB tokens..." 
+                            min="1"
+                            step="1"
+                        />
+                        <div class="balance-hint">
+                            Available: <span id="availableBalance">0 BB</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Place Bet Button -->
+                    <button class="place-bet-btn" id="placePriceActionBet">
+                        🎲 Place Bet
+                    </button>
+                </div>
+
+                <!-- Active Bets -->
+                <div class="active-bets-panel">
+                    <h3>📊 Your Active Bets</h3>
+                    <div id="activeBetsList" class="bets-list">
+                        <p class="empty-state">No active bets</p>
+                    </div>
+                </div>
+
+                <!-- Bet History -->
+                <div class="bet-history-panel">
+                    <h3>📜 Recent Results</h3>
+                    <div id="betHistory" class="history-list">
+                        <p class="empty-state">No bet history</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        page.appendChild(pageContent);
+        return page;
+    }
+
+    /**
+     * Build receipts page
+     */
+    static buildReceiptsPage(): HTMLElement {
+        const page = document.createElement('div');
+        page.id = 'receiptsPage';
+        page.className = 'page';
+        
+        // Page header
+        const pageHeader = document.createElement('div');
+        pageHeader.className = 'page-header';
+        pageHeader.innerHTML = `
+            <button class="back-btn" id="backFromReceiptsBtn">← Back to Markets</button>
+            <h2>📜 Transaction Receipts</h2>
+            <p class="page-subtitle">Complete history of all platform transactions</p>
+        `;
+        page.appendChild(pageHeader);
+        
+        // Page content
+        const pageContent = document.createElement('div');
+        pageContent.className = 'page-content';
+        pageContent.innerHTML = `
+            <div class="receipts-container">
+                <!-- Filters Panel -->
+                <div class="receipts-filters">
+                    <h3>🔍 Filter Transactions</h3>
+                    
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="filterAccount">Account:</label>
+                            <select id="filterAccount" class="filter-select">
+                                <option value="">All Accounts</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="filterType">Transaction Type:</label>
+                            <select id="filterType" class="filter-select">
+                                <option value="">All Types</option>
+                                <option value="transfer">Transfer</option>
+                                <option value="market_bet">Market Bet</option>
+                                <option value="market_payout">Payout</option>
+                                <option value="admin_deposit">Admin Deposit</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="searchAmount">Min Amount (BB):</label>
+                            <input type="number" id="searchAmount" class="filter-input" placeholder="0" min="0" step="1">
+                        </div>
+                        
+                        <button class="filter-btn" id="applyFiltersBtn">Apply Filters</button>
+                        <button class="reset-btn" id="resetFiltersBtn">Reset</button>
+                    </div>
+                </div>
+
+                <!-- Stats Summary -->
+                <div class="receipts-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Transactions</div>
+                            <div class="stat-value" id="totalTransactions">0</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Volume</div>
+                            <div class="stat-value" id="totalVolume">0 BB</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">🎯</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Market Bets</div>
+                            <div class="stat-value" id="totalBets">0</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">🔄</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Transfers</div>
+                            <div class="stat-value" id="totalTransfers">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transactions List -->
+                <div class="receipts-list-panel">
+                    <div class="panel-header">
+                        <h3>📋 Transaction History</h3>
+                        <div class="results-count">
+                            Showing <span id="visibleCount">0</span> of <span id="totalCount">0</span> transactions
+                        </div>
+                    </div>
+                    
+                    <div id="receiptsList" class="receipts-list">
+                        <p class="loading">Loading transactions...</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        page.appendChild(pageContent);
+        return page;
+    }
+
     /**
      * Populate accounts list in header
      */

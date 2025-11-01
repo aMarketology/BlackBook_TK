@@ -55,6 +55,7 @@
  */
 
 import { BackendService } from './lib/backend_service';
+import type { Transaction } from './lib/backend_service';
 import { debugConsole } from './lib/debug_console';
 import { formatVolume } from './lib/polymarket';
 import { UIBuilder } from './lib/ui_builder';
@@ -523,6 +524,152 @@ function closeAccountsDropdown() {
 // ============================================
 
 // ============================================
+// RECEIPTS LOGIC
+// ============================================
+
+let allTransactions: Transaction[] = [];
+let filteredTransactions: Transaction[] = [];
+
+async function loadReceipts() {
+    try {
+        log('📜 Loading all transactions...', 'info');
+        
+        // Fetch all transactions from backend
+        const transactions = await BackendService.getAllTransactions();
+        allTransactions = transactions;
+        filteredTransactions = transactions;
+        
+        log(`✅ Loaded ${transactions.length} transactions`, 'success');
+        
+        // Update UI
+        updateReceiptsStats();
+        displayReceipts(filteredTransactions);
+        populateReceiptsFilters();
+        
+    } catch (error: any) {
+        log(`❌ Failed to load receipts: ${error.message}`, 'error');
+    }
+}
+
+function updateReceiptsStats() {
+    const totalTransactionsEl = document.getElementById('totalTransactions');
+    const totalVolumeEl = document.getElementById('totalVolume');
+    const totalBetsEl = document.getElementById('totalBets');
+    const totalTransfersEl = document.getElementById('totalTransfers');
+    
+    const totalVolume = allTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+    const totalBets = allTransactions.filter(tx => tx.type === 'market_bet').length;
+    const totalTransfers = allTransactions.filter(tx => tx.type === 'transfer').length;
+    
+    if (totalTransactionsEl) totalTransactionsEl.textContent = allTransactions.length.toString();
+    if (totalVolumeEl) totalVolumeEl.textContent = `${totalVolume.toFixed(2)} BB`;
+    if (totalBetsEl) totalBetsEl.textContent = totalBets.toString();
+    if (totalTransfersEl) totalTransfersEl.textContent = totalTransfers.toString();
+}
+
+function displayReceipts(transactions: Transaction[]) {
+    const receiptsList = document.getElementById('receiptsList');
+    const visibleCountEl = document.getElementById('visibleCount');
+    const totalCountEl = document.getElementById('totalCount');
+    
+    if (!receiptsList) return;
+    
+    // Update counts
+    if (visibleCountEl) visibleCountEl.textContent = transactions.length.toString();
+    if (totalCountEl) totalCountEl.textContent = allTransactions.length.toString();
+    
+    if (transactions.length === 0) {
+        receiptsList.innerHTML = '<p class="empty-state">No transactions found</p>';
+        return;
+    }
+    
+    // Sort by timestamp (newest first)
+    const sortedTransactions = [...transactions].sort((a, b) => b.timestamp - a.timestamp);
+    
+    receiptsList.innerHTML = sortedTransactions.map(tx => {
+        const date = new Date(tx.timestamp * 1000);
+        const formattedDate = date.toLocaleString();
+        
+        return `
+            <div class="receipt-item">
+                <div class="receipt-header">
+                    <span class="receipt-type ${tx.type}">${tx.type.replace('_', ' ')}</span>
+                    <span class="receipt-amount">${tx.amount.toFixed(2)} BB</span>
+                </div>
+                <div class="receipt-body">
+                    <div class="receipt-field">
+                        <span class="receipt-label">From:</span>
+                        <span class="receipt-value">${tx.from}</span>
+                    </div>
+                    <div class="receipt-field">
+                        <span class="receipt-label">To:</span>
+                        <span class="receipt-value">${tx.to}</span>
+                    </div>
+                </div>
+                <div class="receipt-timestamp">📅 ${formattedDate}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function populateReceiptsFilters() {
+    const filterAccount = document.getElementById('filterAccount') as HTMLSelectElement;
+    if (!filterAccount) return;
+    
+    // Get unique accounts from transactions
+    const accounts = new Set<string>();
+    allTransactions.forEach(tx => {
+        accounts.add(tx.from);
+        accounts.add(tx.to);
+    });
+    
+    // Populate dropdown
+    const sortedAccounts = Array.from(accounts).sort();
+    filterAccount.innerHTML = '<option value="">All Accounts</option>' + 
+        sortedAccounts.map(account => `<option value="${account}">${account}</option>`).join('');
+    
+    // Add filter event listeners
+    setupFilterListeners();
+}
+
+function setupFilterListeners() {
+    const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+    const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+    const filterAccount = document.getElementById('filterAccount') as HTMLSelectElement;
+    const filterType = document.getElementById('filterType') as HTMLSelectElement;
+    const searchAmount = document.getElementById('searchAmount') as HTMLInputElement;
+    
+    if (applyFiltersBtn) {
+        applyFiltersBtn.addEventListener('click', () => {
+            const account = filterAccount?.value || '';
+            const type = filterType?.value || '';
+            const minAmount = searchAmount?.value ? parseFloat(searchAmount.value) : 0;
+            
+            filteredTransactions = allTransactions.filter(tx => {
+                const matchesAccount = !account || tx.from === account || tx.to === account;
+                const matchesType = !type || tx.type === type;
+                const matchesAmount = tx.amount >= minAmount;
+                return matchesAccount && matchesType && matchesAmount;
+            });
+            
+            displayReceipts(filteredTransactions);
+            log(`🔍 Filtered to ${filteredTransactions.length} transactions`, 'info');
+        });
+    }
+    
+    if (resetFiltersBtn) {
+        resetFiltersBtn.addEventListener('click', () => {
+            if (filterAccount) filterAccount.value = '';
+            if (filterType) filterType.value = '';
+            if (searchAmount) searchAmount.value = '';
+            filteredTransactions = allTransactions;
+            displayReceipts(filteredTransactions);
+            log('🔄 Filters reset', 'info');
+        });
+    }
+}
+
+// ============================================
 // PAGE SWITCHING
 // ============================================
 
@@ -530,6 +677,7 @@ function switchPage(page: string) {
     const mainContainer = document.getElementById('mainContainer') as HTMLElement;
     const transfersContainer = document.getElementById('transfersContainer') as HTMLElement;
     const priceActionContainer = document.getElementById('priceActionContainer') as HTMLElement;
+    const receiptsContainer = document.getElementById('receiptsContainer') as HTMLElement;
     
     if (page === 'transfers') {
         log('🔄 Opening Transfers Page...', 'info');
@@ -541,16 +689,27 @@ function switchPage(page: string) {
             TransfersModule.updateTransferStats();
         }
         if (priceActionContainer) priceActionContainer.classList.add('hidden');
+        if (receiptsContainer) receiptsContainer.classList.add('hidden');
     } else if (page === 'priceAction') {
         log('⚡ Opening Price Action...', 'info');
         if (mainContainer) mainContainer.classList.add('hidden');
         if (transfersContainer) transfersContainer.classList.add('hidden');
         if (priceActionContainer) priceActionContainer.classList.remove('hidden');
+        if (receiptsContainer) receiptsContainer.classList.add('hidden');
+    } else if (page === 'receipts') {
+        log('📜 Opening Receipts...', 'info');
+        if (mainContainer) mainContainer.classList.add('hidden');
+        if (transfersContainer) transfersContainer.classList.add('hidden');
+        if (priceActionContainer) priceActionContainer.classList.add('hidden');
+        if (receiptsContainer) receiptsContainer.classList.remove('hidden');
+        // Load receipts when page opens
+        loadReceipts();
     } else if (page === 'markets') {
         log('📊 Returning to Markets...', 'info');
         if (mainContainer) mainContainer.classList.remove('hidden');
         if (transfersContainer) transfersContainer.classList.add('hidden');
         if (priceActionContainer) priceActionContainer.classList.add('hidden');
+        if (receiptsContainer) receiptsContainer.classList.add('hidden');
     }
 }
 
@@ -667,19 +826,40 @@ function setupEventListeners() {
         });
     }
     
-    // Home button - return to home/markets page
-    const homeNavBtn = document.getElementById('homeNavBtn');
-    if (homeNavBtn) {
-        homeNavBtn.addEventListener('click', () => {
-            switchPage('markets');
-            debugConsole.log('🏠 Returning to home page', 'info');
-        });
-    }
+    // Home button - return to home/markets page (hidden for now)
+    // const homeNavBtn = document.getElementById('homeNavBtn');
+    // if (homeNavBtn) {
+    //     homeNavBtn.addEventListener('click', () => {
+    //         switchPage('markets');
+    //         debugConsole.log('🏠 Returning to home page', 'info');
+    //     });
+    // }
     
     // Back button
     const backBtn = document.getElementById('backBtn');
     if (backBtn) {
         backBtn.addEventListener('click', () => switchPage('markets'));
+    }
+    
+    // Back from Price Action button
+    const backFromPriceActionBtn = document.getElementById('backFromPriceActionBtn');
+    if (backFromPriceActionBtn) {
+        backFromPriceActionBtn.addEventListener('click', () => switchPage('markets'));
+    }
+    
+    // Back from Receipts button
+    const backFromReceiptsBtn = document.getElementById('backFromReceiptsBtn');
+    if (backFromReceiptsBtn) {
+        backFromReceiptsBtn.addEventListener('click', () => switchPage('markets'));
+    }
+    
+    // Receipts button
+    const receiptsBtn = document.getElementById('receiptsBtn');
+    if (receiptsBtn) {
+        receiptsBtn.addEventListener('click', () => {
+            switchPage('receipts');
+            debugConsole.log('📜 Opening receipts page', 'info');
+        });
     }
     
     // TransfersModule handles all transfer form event listeners

@@ -326,6 +326,16 @@ class UIBuilder {
     transfersContainer.appendChild(this.buildTransfersPage());
     transfersContainer.classList.add("hidden");
     container.appendChild(transfersContainer);
+    const priceActionContainer = document.createElement("div");
+    priceActionContainer.id = "priceActionContainer";
+    priceActionContainer.appendChild(this.buildPriceActionPage());
+    priceActionContainer.classList.add("hidden");
+    container.appendChild(priceActionContainer);
+    const receiptsContainer = document.createElement("div");
+    receiptsContainer.id = "receiptsContainer";
+    receiptsContainer.appendChild(this.buildReceiptsPage());
+    receiptsContainer.classList.add("hidden");
+    container.appendChild(receiptsContainer);
     return container;
   }
   static buildHeader() {
@@ -361,11 +371,6 @@ class UIBuilder {
     accountsBadge.className = "badge";
     accountsBadge.textContent = "\uD83D\uDCCA 8 Accounts";
     networkInfo.appendChild(accountsBadge);
-    const homeNavBtn = document.createElement("button");
-    homeNavBtn.className = "badge badge-button";
-    homeNavBtn.id = "homeNavBtn";
-    homeNavBtn.textContent = "\uD83C\uDFE0 Home";
-    networkInfo.appendChild(homeNavBtn);
     const transfersBtn = document.createElement("button");
     transfersBtn.className = "badge badge-button";
     transfersBtn.id = "transfersBtn";
@@ -376,6 +381,11 @@ class UIBuilder {
     priceActionBtn.id = "priceActionBtn";
     priceActionBtn.textContent = "⚡ Price Action";
     networkInfo.appendChild(priceActionBtn);
+    const receiptsBtn = document.createElement("button");
+    receiptsBtn.className = "badge badge-button";
+    receiptsBtn.id = "receiptsBtn";
+    receiptsBtn.textContent = "\uD83D\uDCDC Receipts";
+    networkInfo.appendChild(receiptsBtn);
     headerLeft.appendChild(networkInfo);
     const headerRight = document.createElement("div");
     headerRight.className = "header-right";
@@ -568,6 +578,238 @@ class UIBuilder {
             </div>
         `;
     return statsPanel;
+  }
+  static buildPriceActionPage() {
+    const page = document.createElement("div");
+    page.id = "priceActionPage";
+    page.className = "page";
+    const pageHeader = document.createElement("div");
+    pageHeader.className = "page-header";
+    pageHeader.innerHTML = `
+            <button class="back-btn" id="backFromPriceActionBtn">← Back to Markets</button>
+            <h2>⚡ Price Action Trading</h2>
+            <p class="page-subtitle">Bet on Bitcoin & Solana price movements</p>
+        `;
+    page.appendChild(pageHeader);
+    const pageContent = document.createElement("div");
+    pageContent.className = "page-content";
+    pageContent.innerHTML = `
+            <div class="price-action-container">
+                <!-- Live Prices Display -->
+                <div class="price-cards">
+                    <div class="price-card bitcoin-card">
+                        <div class="coin-header">
+                            <span class="coin-icon">₿</span>
+                            <h3>Bitcoin</h3>
+                        </div>
+                        <div class="current-price">
+                            <span class="price-label">Current Price</span>
+                            <span class="price-value" id="btcPriceAction">$0.00</span>
+                        </div>
+                        <div class="price-change" id="btcChange">+0.00%</div>
+                    </div>
+                    
+                    <div class="price-card solana-card">
+                        <div class="coin-header">
+                            <span class="coin-icon">◎</span>
+                            <h3>Solana</h3>
+                        </div>
+                        <div class="current-price">
+                            <span class="price-label">Current Price</span>
+                            <span class="price-value" id="solPriceAction">$0.00</span>
+                        </div>
+                        <div class="price-change" id="solChange">+0.00%</div>
+                    </div>
+                </div>
+
+                <!-- Betting Interface -->
+                <div class="betting-panel">
+                    <h3>\uD83C\uDFAF Place Your Bet</h3>
+                    
+                    <!-- Asset Selection -->
+                    <div class="form-group">
+                        <label>Select Asset:</label>
+                        <div class="asset-buttons">
+                            <button class="asset-btn active" id="selectBitcoin" data-asset="bitcoin">
+                                ₿ Bitcoin
+                            </button>
+                            <button class="asset-btn" id="selectSolana" data-asset="solana">
+                                ◎ Solana
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Timeframe Selection -->
+                    <div class="form-group">
+                        <label>Select Timeframe:</label>
+                        <div class="timeframe-buttons">
+                            <button class="timeframe-btn active" id="timeframe1min" data-time="60">
+                                ⏱️ 1 Minute
+                            </button>
+                            <button class="timeframe-btn" id="timeframe15min" data-time="900">
+                                ⏲️ 15 Minutes
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Direction Selection -->
+                    <div class="form-group">
+                        <label>Predict Price Direction:</label>
+                        <div class="direction-buttons">
+                            <button class="direction-btn higher-btn" id="predictHigher">
+                                \uD83D\uDCC8 HIGHER
+                            </button>
+                            <button class="direction-btn lower-btn" id="predictLower">
+                                \uD83D\uDCC9 LOWER
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Bet Amount -->
+                    <div class="form-group">
+                        <label for="betAmount">
+                            <span class="label-text">Bet Amount (BB):</span>
+                            <span class="required">*</span>
+                        </label>
+                        <input 
+                            type="number" 
+                            id="betAmount" 
+                            placeholder="Enter amount in BB tokens..." 
+                            min="1"
+                            step="1"
+                        />
+                        <div class="balance-hint">
+                            Available: <span id="availableBalance">0 BB</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Place Bet Button -->
+                    <button class="place-bet-btn" id="placePriceActionBet">
+                        \uD83C\uDFB2 Place Bet
+                    </button>
+                </div>
+
+                <!-- Active Bets -->
+                <div class="active-bets-panel">
+                    <h3>\uD83D\uDCCA Your Active Bets</h3>
+                    <div id="activeBetsList" class="bets-list">
+                        <p class="empty-state">No active bets</p>
+                    </div>
+                </div>
+
+                <!-- Bet History -->
+                <div class="bet-history-panel">
+                    <h3>\uD83D\uDCDC Recent Results</h3>
+                    <div id="betHistory" class="history-list">
+                        <p class="empty-state">No bet history</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    page.appendChild(pageContent);
+    return page;
+  }
+  static buildReceiptsPage() {
+    const page = document.createElement("div");
+    page.id = "receiptsPage";
+    page.className = "page";
+    const pageHeader = document.createElement("div");
+    pageHeader.className = "page-header";
+    pageHeader.innerHTML = `
+            <button class="back-btn" id="backFromReceiptsBtn">← Back to Markets</button>
+            <h2>\uD83D\uDCDC Transaction Receipts</h2>
+            <p class="page-subtitle">Complete history of all platform transactions</p>
+        `;
+    page.appendChild(pageHeader);
+    const pageContent = document.createElement("div");
+    pageContent.className = "page-content";
+    pageContent.innerHTML = `
+            <div class="receipts-container">
+                <!-- Filters Panel -->
+                <div class="receipts-filters">
+                    <h3>\uD83D\uDD0D Filter Transactions</h3>
+                    
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="filterAccount">Account:</label>
+                            <select id="filterAccount" class="filter-select">
+                                <option value="">All Accounts</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="filterType">Transaction Type:</label>
+                            <select id="filterType" class="filter-select">
+                                <option value="">All Types</option>
+                                <option value="transfer">Transfer</option>
+                                <option value="market_bet">Market Bet</option>
+                                <option value="market_payout">Payout</option>
+                                <option value="admin_deposit">Admin Deposit</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="searchAmount">Min Amount (BB):</label>
+                            <input type="number" id="searchAmount" class="filter-input" placeholder="0" min="0" step="1">
+                        </div>
+                        
+                        <button class="filter-btn" id="applyFiltersBtn">Apply Filters</button>
+                        <button class="reset-btn" id="resetFiltersBtn">Reset</button>
+                    </div>
+                </div>
+
+                <!-- Stats Summary -->
+                <div class="receipts-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon">\uD83D\uDCCA</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Transactions</div>
+                            <div class="stat-value" id="totalTransactions">0</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">\uD83D\uDCB0</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Volume</div>
+                            <div class="stat-value" id="totalVolume">0 BB</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">\uD83C\uDFAF</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Market Bets</div>
+                            <div class="stat-value" id="totalBets">0</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">\uD83D\uDD04</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Transfers</div>
+                            <div class="stat-value" id="totalTransfers">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transactions List -->
+                <div class="receipts-list-panel">
+                    <div class="panel-header">
+                        <h3>\uD83D\uDCCB Transaction History</h3>
+                        <div class="results-count">
+                            Showing <span id="visibleCount">0</span> of <span id="totalCount">0</span> transactions
+                        </div>
+                    </div>
+                    
+                    <div id="receiptsList" class="receipts-list">
+                        <p class="loading">Loading transactions...</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    page.appendChild(pageContent);
+    return page;
   }
   static populateAccountsList(accounts) {
     const accountsList = document.getElementById("accountsList");
@@ -1443,10 +1685,131 @@ function closeAccountsDropdown() {
     toggle.classList.remove("active");
   }
 }
+var allTransactions = [];
+var filteredTransactions = [];
+async function loadReceipts() {
+  try {
+    log("\uD83D\uDCDC Loading all transactions...", "info");
+    const transactions = await BackendService.getAllTransactions();
+    allTransactions = transactions;
+    filteredTransactions = transactions;
+    log(`✅ Loaded ${transactions.length} transactions`, "success");
+    updateReceiptsStats();
+    displayReceipts(filteredTransactions);
+    populateReceiptsFilters();
+  } catch (error) {
+    log(`❌ Failed to load receipts: ${error.message}`, "error");
+  }
+}
+function updateReceiptsStats() {
+  const totalTransactionsEl = document.getElementById("totalTransactions");
+  const totalVolumeEl = document.getElementById("totalVolume");
+  const totalBetsEl = document.getElementById("totalBets");
+  const totalTransfersEl = document.getElementById("totalTransfers");
+  const totalVolume = allTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+  const totalBets = allTransactions.filter((tx) => tx.type === "market_bet").length;
+  const totalTransfers = allTransactions.filter((tx) => tx.type === "transfer").length;
+  if (totalTransactionsEl)
+    totalTransactionsEl.textContent = allTransactions.length.toString();
+  if (totalVolumeEl)
+    totalVolumeEl.textContent = `${totalVolume.toFixed(2)} BB`;
+  if (totalBetsEl)
+    totalBetsEl.textContent = totalBets.toString();
+  if (totalTransfersEl)
+    totalTransfersEl.textContent = totalTransfers.toString();
+}
+function displayReceipts(transactions) {
+  const receiptsList = document.getElementById("receiptsList");
+  const visibleCountEl = document.getElementById("visibleCount");
+  const totalCountEl = document.getElementById("totalCount");
+  if (!receiptsList)
+    return;
+  if (visibleCountEl)
+    visibleCountEl.textContent = transactions.length.toString();
+  if (totalCountEl)
+    totalCountEl.textContent = allTransactions.length.toString();
+  if (transactions.length === 0) {
+    receiptsList.innerHTML = '<p class="empty-state">No transactions found</p>';
+    return;
+  }
+  const sortedTransactions = [...transactions].sort((a, b) => b.timestamp - a.timestamp);
+  receiptsList.innerHTML = sortedTransactions.map((tx) => {
+    const date = new Date(tx.timestamp * 1000);
+    const formattedDate = date.toLocaleString();
+    return `
+            <div class="receipt-item">
+                <div class="receipt-header">
+                    <span class="receipt-type ${tx.type}">${tx.type.replace("_", " ")}</span>
+                    <span class="receipt-amount">${tx.amount.toFixed(2)} BB</span>
+                </div>
+                <div class="receipt-body">
+                    <div class="receipt-field">
+                        <span class="receipt-label">From:</span>
+                        <span class="receipt-value">${tx.from}</span>
+                    </div>
+                    <div class="receipt-field">
+                        <span class="receipt-label">To:</span>
+                        <span class="receipt-value">${tx.to}</span>
+                    </div>
+                </div>
+                <div class="receipt-timestamp">\uD83D\uDCC5 ${formattedDate}</div>
+            </div>
+        `;
+  }).join("");
+}
+function populateReceiptsFilters() {
+  const filterAccount = document.getElementById("filterAccount");
+  if (!filterAccount)
+    return;
+  const accounts2 = new Set;
+  allTransactions.forEach((tx) => {
+    accounts2.add(tx.from);
+    accounts2.add(tx.to);
+  });
+  const sortedAccounts = Array.from(accounts2).sort();
+  filterAccount.innerHTML = '<option value="">All Accounts</option>' + sortedAccounts.map((account) => `<option value="${account}">${account}</option>`).join("");
+  setupFilterListeners();
+}
+function setupFilterListeners() {
+  const applyFiltersBtn = document.getElementById("applyFiltersBtn");
+  const resetFiltersBtn = document.getElementById("resetFiltersBtn");
+  const filterAccount = document.getElementById("filterAccount");
+  const filterType = document.getElementById("filterType");
+  const searchAmount = document.getElementById("searchAmount");
+  if (applyFiltersBtn) {
+    applyFiltersBtn.addEventListener("click", () => {
+      const account = filterAccount?.value || "";
+      const type = filterType?.value || "";
+      const minAmount = searchAmount?.value ? parseFloat(searchAmount.value) : 0;
+      filteredTransactions = allTransactions.filter((tx) => {
+        const matchesAccount = !account || tx.from === account || tx.to === account;
+        const matchesType = !type || tx.type === type;
+        const matchesAmount = tx.amount >= minAmount;
+        return matchesAccount && matchesType && matchesAmount;
+      });
+      displayReceipts(filteredTransactions);
+      log(`\uD83D\uDD0D Filtered to ${filteredTransactions.length} transactions`, "info");
+    });
+  }
+  if (resetFiltersBtn) {
+    resetFiltersBtn.addEventListener("click", () => {
+      if (filterAccount)
+        filterAccount.value = "";
+      if (filterType)
+        filterType.value = "";
+      if (searchAmount)
+        searchAmount.value = "";
+      filteredTransactions = allTransactions;
+      displayReceipts(filteredTransactions);
+      log("\uD83D\uDD04 Filters reset", "info");
+    });
+  }
+}
 function switchPage(page) {
   const mainContainer = document.getElementById("mainContainer");
   const transfersContainer = document.getElementById("transfersContainer");
   const priceActionContainer = document.getElementById("priceActionContainer");
+  const receiptsContainer = document.getElementById("receiptsContainer");
   if (page === "transfers") {
     log("\uD83D\uDD04 Opening Transfers Page...", "info");
     if (mainContainer)
@@ -1458,6 +1821,8 @@ function switchPage(page) {
     }
     if (priceActionContainer)
       priceActionContainer.classList.add("hidden");
+    if (receiptsContainer)
+      receiptsContainer.classList.add("hidden");
   } else if (page === "priceAction") {
     log("⚡ Opening Price Action...", "info");
     if (mainContainer)
@@ -1466,6 +1831,19 @@ function switchPage(page) {
       transfersContainer.classList.add("hidden");
     if (priceActionContainer)
       priceActionContainer.classList.remove("hidden");
+    if (receiptsContainer)
+      receiptsContainer.classList.add("hidden");
+  } else if (page === "receipts") {
+    log("\uD83D\uDCDC Opening Receipts...", "info");
+    if (mainContainer)
+      mainContainer.classList.add("hidden");
+    if (transfersContainer)
+      transfersContainer.classList.add("hidden");
+    if (priceActionContainer)
+      priceActionContainer.classList.add("hidden");
+    if (receiptsContainer)
+      receiptsContainer.classList.remove("hidden");
+    loadReceipts();
   } else if (page === "markets") {
     log("\uD83D\uDCCA Returning to Markets...", "info");
     if (mainContainer)
@@ -1474,6 +1852,8 @@ function switchPage(page) {
       transfersContainer.classList.add("hidden");
     if (priceActionContainer)
       priceActionContainer.classList.add("hidden");
+    if (receiptsContainer)
+      receiptsContainer.classList.add("hidden");
   }
 }
 async function init() {
@@ -1551,16 +1931,24 @@ function setupEventListeners() {
       switchPage("priceAction");
     });
   }
-  const homeNavBtn = document.getElementById("homeNavBtn");
-  if (homeNavBtn) {
-    homeNavBtn.addEventListener("click", () => {
-      switchPage("markets");
-      debugConsole.log("\uD83C\uDFE0 Returning to home page", "info");
-    });
-  }
   const backBtn = document.getElementById("backBtn");
   if (backBtn) {
     backBtn.addEventListener("click", () => switchPage("markets"));
+  }
+  const backFromPriceActionBtn = document.getElementById("backFromPriceActionBtn");
+  if (backFromPriceActionBtn) {
+    backFromPriceActionBtn.addEventListener("click", () => switchPage("markets"));
+  }
+  const backFromReceiptsBtn = document.getElementById("backFromReceiptsBtn");
+  if (backFromReceiptsBtn) {
+    backFromReceiptsBtn.addEventListener("click", () => switchPage("markets"));
+  }
+  const receiptsBtn = document.getElementById("receiptsBtn");
+  if (receiptsBtn) {
+    receiptsBtn.addEventListener("click", () => {
+      switchPage("receipts");
+      debugConsole.log("\uD83D\uDCDC Opening receipts page", "info");
+    });
   }
   document.addEventListener("click", (e) => {
     const selector = document.querySelector(".accounts-selector");
