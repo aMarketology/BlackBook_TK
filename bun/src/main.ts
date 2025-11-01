@@ -1,6 +1,25 @@
 /**
- * BlackBook L1 Desktop App - Simplifieasync function lasync function loadAccounts() {
+ * BlackBook L1 Desktop App - Simplifieasync function lasync function loasync function loadAccounts() {
     try {
+        log('🔗 Connecting to BlackBook L1...', 'info');
+        console.log('📡 Calling BackendService.getAllAccounts()...');
+        accounts = await BackendService.getAllAccounts();
+        console.log(`✅ BackendService returned ${accounts.length} accounts:`, accounts);
+        
+        if (accounts.length === 8) {
+            log('✅ Blockchain Connection: YES', 'success');
+            log('✅ 8 Accounts Loaded: YES', 'success');
+        } else {
+            log(`⚠️ Found ${accounts.length} accounts (expected 8)`, 'warning');
+        }
+        
+        console.log('📢 About to call renderAccounts()');
+        renderAccounts();
+    } catch (error) {
+        console.error('❌ loadAccounts error:', error);
+        log(`❌ Failed to connect to blockchain: ${error}`, 'error');
+    }
+}  try {
         log('🔗 Connecting to BlackBook L1...', 'info');
         accounts = await BackendService.getAllAccounts();
         
@@ -77,7 +96,7 @@ const log = (message: string, type: string = 'info') => debugConsole.log(message
 async function loadAccounts() {
     try {
         log('� Connecting to BlackBook L1...', 'info');
-        accounts = await invoke('get_accounts') as Account[];
+        accounts = await BackendService.getAllAccounts();
         
         if (accounts.length === 8) {
             log('✅ Blockchain Connection: YES', 'success');
@@ -181,6 +200,7 @@ async function placeBet(marketId: string, outcome: string, amount: number) {
 // ============================================
 
 function renderAccounts() {
+    console.log(`🎯 renderAccounts called with ${accounts.length} accounts`, accounts);
     UIBuilder.populateAccountsList(accounts);
     UIBuilder.populateTransferSelects(accounts);
     updateAccountsToggleDisplay();

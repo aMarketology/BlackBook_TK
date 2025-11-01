@@ -17,7 +17,7 @@ function transformCallback(callback, once = false) {
   });
   return identifier;
 }
-async function invoke2(cmd, args = {}) {
+async function invoke(cmd, args = {}) {
   return new Promise((resolve, reject) => {
     const callback = transformCallback((e) => {
       resolve(e);
@@ -40,7 +40,7 @@ async function invoke2(cmd, args = {}) {
 class BackendService {
   static async getAllAccounts() {
     try {
-      return await invoke2("get_accounts");
+      return await invoke("get_accounts");
     } catch (error) {
       console.error("❌ Failed to get accounts:", error);
       throw error;
@@ -48,7 +48,7 @@ class BackendService {
   }
   static async getBalance(address) {
     try {
-      return await invoke2("get_balance", { address });
+      return await invoke("get_balance", { address });
     } catch (error) {
       console.error("❌ Failed to get balance:", error);
       throw error;
@@ -56,7 +56,7 @@ class BackendService {
   }
   static async deposit(address, amount) {
     try {
-      return await invoke2("admin_deposit", { address, amount });
+      return await invoke("admin_deposit", { address, amount });
     } catch (error) {
       console.error("❌ Deposit failed:", error);
       throw error;
@@ -64,7 +64,7 @@ class BackendService {
   }
   static async transfer(from, to, amount) {
     try {
-      return await invoke2("transfer", { from, to, amount });
+      return await invoke("transfer", { from, to, amount });
     } catch (error) {
       console.error("❌ Transfer failed:", error);
       throw error;
@@ -72,7 +72,7 @@ class BackendService {
   }
   static async getAccountTransactions(address) {
     try {
-      return await invoke2("get_account_transactions", { address });
+      return await invoke("get_account_transactions", { address });
     } catch (error) {
       console.error("❌ Failed to get transactions:", error);
       throw error;
@@ -80,7 +80,7 @@ class BackendService {
   }
   static async getAllTransactions() {
     try {
-      return await invoke2("get_all_transactions");
+      return await invoke("get_all_transactions");
     } catch (error) {
       console.error("❌ Failed to get all transactions:", error);
       throw error;
@@ -88,7 +88,7 @@ class BackendService {
   }
   static async getLedgerStats() {
     try {
-      return await invoke2("get_stats");
+      return await invoke("get_stats");
     } catch (error) {
       console.error("❌ Failed to get stats:", error);
       throw error;
@@ -96,7 +96,7 @@ class BackendService {
   }
   static async getMarkets() {
     try {
-      return await invoke2("get_markets");
+      return await invoke("get_markets");
     } catch (error) {
       console.error("❌ Failed to get markets:", error);
       throw error;
@@ -104,7 +104,7 @@ class BackendService {
   }
   static async getMarket(marketId) {
     try {
-      return await invoke2("get_market", { marketId });
+      return await invoke("get_market", { marketId });
     } catch (error) {
       console.error("❌ Failed to get market:", error);
       throw error;
@@ -112,7 +112,7 @@ class BackendService {
   }
   static async placeBet(marketId, account, amount, prediction) {
     try {
-      return await invoke2("place_bet", { marketId, account, amount, prediction });
+      return await invoke("place_bet", { marketId, account, amount, prediction });
     } catch (error) {
       console.error("❌ Bet placement failed:", error);
       throw error;
@@ -120,7 +120,7 @@ class BackendService {
   }
   static async resolveMarket(marketId, winningOption) {
     try {
-      return await invoke2("resolve_market", { marketId, winningOption });
+      return await invoke("resolve_market", { marketId, winningOption });
     } catch (error) {
       console.error("❌ Market resolution failed:", error);
       throw error;
@@ -128,7 +128,7 @@ class BackendService {
   }
   static async getPrices() {
     try {
-      return await invoke2("get_prices");
+      return await invoke("get_prices");
     } catch (error) {
       console.error("❌ Price fetch failed:", error);
       throw error;
@@ -136,7 +136,7 @@ class BackendService {
   }
   static async getPolymarketEvents() {
     try {
-      return await invoke2("get_polymarket_events");
+      return await invoke("get_polymarket_events");
     } catch (error) {
       console.error("❌ Polymarket fetch failed:", error);
       throw error;
@@ -763,7 +763,7 @@ var log = (message, type = "info") => debugConsole.log(message, type);
 async function loadAccounts() {
   try {
     log("� Connecting to BlackBook L1...", "info");
-    accounts = await invoke("get_accounts");
+    accounts = await BackendService.getAllAccounts();
     if (accounts.length === 8) {
       log("✅ Blockchain Connection: YES", "success");
       log("✅ 8 Accounts Loaded: YES", "success");

@@ -323,14 +323,28 @@ static buildMainContent(): HTMLElement {
      */
     static populateAccountsList(accounts: Account[]): void {
         const accountsList = document.getElementById('accountsList');
-        if (!accountsList) return;
+        if (!accountsList) {
+            console.log('❌ accountsList element not found');
+            return;
+        }
         
-        accountsList.innerHTML = accounts.map(account => `
+        console.log(`📋 populateAccountsList called with ${accounts.length} accounts`, accounts);
+        
+        if (accounts.length === 0) {
+            console.log('⚠️ No accounts to populate');
+            accountsList.innerHTML = '<p class="empty-state">No accounts available</p>';
+            return;
+        }
+        
+        const html = accounts.map(account => `
             <div class="account-item" data-account="${account.name}">
                 <div class="account-name">${account.name}</div>
                 <div class="account-balance">${account.balance} BB</div>
             </div>
         `).join('');
+        
+        console.log('✅ Setting accountsList innerHTML with', accounts.length, 'accounts');
+        accountsList.innerHTML = html;
     }
 
     /**
