@@ -27,8 +27,15 @@ fn main() {
             commands::create_market,
             commands::get_markets,
             commands::place_market_bet,
+            commands::get_open_markets,
+            commands::get_market_stats,
+            commands::close_market,
+            commands::resolve_market,
+            commands::get_user_bets,
+            commands::get_all_markets,
             commands::get_prices,
             commands::get_polymarket_events,
+            commands::get_blackbook_events,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

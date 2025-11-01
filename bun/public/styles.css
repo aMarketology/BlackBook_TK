@@ -171,6 +171,39 @@ h3 {
     transform: translateY(-2px);
 }
 
+/* Badge base styles */
+.badge {
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    background: rgba(230, 57, 70, 0.15);
+    border: 1px solid var(--death-red);
+    color: var(--page-yellow);
+    font-weight: 600;
+    letter-spacing: 1px;
+    box-shadow: 0 0 10px rgba(230, 57, 70, 0.2);
+    transition: all 0.3s ease;
+}
+
+/* Badge button - interactive badges */
+.badge-button {
+    cursor: pointer;
+    background: rgba(230, 57, 70, 0.2);
+    border: 2px solid var(--death-red);
+}
+
+.badge-button:hover {
+    background: rgba(230, 57, 70, 0.35);
+    box-shadow: 0 0 20px rgba(230, 57, 70, 0.5);
+    transform: translateY(-2px);
+    color: var(--death-gold);
+}
+
+.badge-button:active {
+    transform: translateY(0);
+    box-shadow: 0 0 10px rgba(230, 57, 70, 0.3);
+}
+
 .admin-button {
     background: linear-gradient(135deg, var(--death-red), var(--blood-red));
     border: none;

@@ -1,34 +1,91 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>BlackBook AI Prediction Events</title>
-    <description>AI-generated prediction market events from various sources</description>
-    <link>http://localhost:3000/ai/events/feed.rss</link>
-    <atom:link href="http://localhost:3000/ai/events/feed.rss" rel="self" type="application/rss+xml" />
+    <title>BlackBook Prediction Markets</title>
+    <description>Major global prediction market events</description>
+    <link>http://localhost:3000/markets/feed.rss</link>
+    <atom:link href="http://localhost:3000/markets/feed.rss" rel="self" type="application/rss+xml" />
     <language>en-us</language>
-    <managingEditor>ai-agent@blackbook.market</managingEditor>
+    <managingEditor>events@blackbook.market</managingEditor>
     <webMaster>admin@blackbook.market</webMaster>
-    <lastBuildDate>Wed, 29 Oct 2025 03:12:18 +0000</lastBuildDate>
+    <lastBuildDate>Fri, 01 Nov 2025 14:30:00 +0000</lastBuildDate>
     <category>Prediction Markets</category>
-    <generator>BlackBook AI Event Generator</generator>
+    <generator>BlackBook Event Generator</generator>
     <ttl>60</ttl>
     
     <item>
-      <title><![CDATA[✅ ACTIVE MARKET - Will the events described in 'Addison Rae Netflix...' occur as predicted?]]></title>
-      <description><![CDATA[Based on the article titled 'Addison Rae Netflix Role in Monster: The Ed Gein Story', will the main predictions or events described come to fruition?]]></description>
-      <link>https://www.objectwire.org/addison-rae-has-a-role-in-monster-the-ed-gein-story</link>
-      <guid isPermaLink="false">ai_event_f4475a2d71af4cdb8db0b95b6024009d</guid>
-      <pubDate>Wed, 29 Oct 2025 03:12:18 +0000</pubDate>
-      <category>tech</category>
-      <source url="https://www.objectwire.org/addison-rae-has-a-role-in-monster-the-ed-gein-story"><![CDATA[www.objectwire.org]]></source>
-      <confidence>0.700</confidence>
+      <title><![CDATA[🏆 Who will win the 2026 FIFA World Cup?]]></title>
+      <description><![CDATA[Which national team will win the 2026 FIFA World Cup tournament held in USA, Canada, and Mexico? The tournament will run from June 12 to July 12, 2026. This market resolves to the winner of the final match.]]></description>
+      <link>https://www.fifa.com/tournaments/mens-world-cup</link>
+      <guid isPermaLink="false">market_2026_world_cup</guid>
+      <pubDate>Fri, 01 Nov 2025 14:30:00 +0000</pubDate>
+      <category>Sports</category>
+      <source url="https://www.fifa.com"><![CDATA[FIFA Official]]></source>
+      <confidence>0.85</confidence>
       <addedToLedger>true</addedToLedger>
-      <marketId>ai_market_b83db5bae7d44bfaa5e44047c3604251</marketId>
-      <marketUrl>http://localhost:3000/markets/ai_market_b83db5bae7d44bfaa5e44047c3604251</marketUrl>
+      <marketId>market_2026_world_cup</marketId>
+      <marketUrl>http://localhost:3000/markets/market_2026_world_cup</marketUrl>
       <options>
-        <option><![CDATA[Yes, events will occur]]></option>
-        <option><![CDATA[No, events will not occur]]></option>
-        <option><![CDATA[Partially accurate]]></option>
+        <option><![CDATA[Argentina]]></option>
+        <option><![CDATA[France]]></option>
+        <option><![CDATA[Brazil]]></option>
+        <option><![CDATA[England]]></option>
+        <option><![CDATA[Other]]></option>
+      </options>
+    </item>
+
+    <item>
+      <title><![CDATA[🇺🇸 Who will win the 2028 US Presidential Election?]]></title>
+      <description><![CDATA[Which candidate will win the 2028 United States Presidential Election scheduled for Tuesday, November 5, 2028? This market resolves to the candidate who wins the most electoral votes. Early indicators and polling data will help inform trader sentiment throughout 2026 and 2027.]]></description>
+      <link>https://www.usa.gov/election-2028</link>
+      <guid isPermaLink="false">market_2028_us_election</guid>
+      <pubDate>Fri, 01 Nov 2025 14:30:00 +0000</pubDate>
+      <category>Politics</category>
+      <source url="https://www.usa.gov"><![CDATA[US Government]]></source>
+      <confidence>0.78</confidence>
+      <addedToLedger>true</addedToLedger>
+      <marketId>market_2028_us_election</marketId>
+      <marketUrl>http://localhost:3000/markets/market_2028_us_election</marketUrl>
+      <options>
+        <option><![CDATA[Republican Candidate]]></option>
+        <option><![CDATA[Democratic Candidate]]></option>
+        <option><![CDATA[Independent/Third Party]]></option>
+      </options>
+    </item>
+
+    <item>
+      <title><![CDATA[🎬 Will Avatar 4 be released in 2026?]]></title>
+      <description><![CDATA[Will James Cameron's Avatar 4 be officially released in theaters in 2026? Director has indicated potential 2026 release. This resolves YES if theatrical release occurs by December 31, 2026.]]></description>
+      <link>https://www.thewaltdisneycompany.com</link>
+      <guid isPermaLink="false">market_avatar4_2026</guid>
+      <pubDate>Fri, 01 Nov 2025 14:30:00 +0000</pubDate>
+      <category>Entertainment</category>
+      <source url="https://www.thewaltdisneycompany.com"><![CDATA[Disney]]></source>
+      <confidence>0.72</confidence>
+      <addedToLedger>true</addedToLedger>
+      <marketId>market_avatar4_2026</marketId>
+      <marketUrl>http://localhost:3000/markets/market_avatar4_2026</marketUrl>
+      <options>
+        <option><![CDATA[Yes, released in 2026]]></option>
+        <option><![CDATA[No, delayed past 2026]]></option>
+      </options>
+    </item>
+
+    <item>
+      <title><![CDATA[📈 Will Bitcoin reach $100,000 by end of 2025?]]></title>
+      <description><![CDATA[Will the price of Bitcoin exceed $100,000 USD at any point on or before December 31, 2025? This market resolves based on the closing price on major exchanges.]]></description>
+      <link>https://www.coinmarketcap.com</link>
+      <guid isPermaLink="false">market_btc_100k_2025</guid>
+      <pubDate>Fri, 01 Nov 2025 14:30:00 +0000</pubDate>
+      <category>Cryptocurrency</category>
+      <source url="https://www.coinmarketcap.com"><![CDATA[CoinMarketCap]]></source>
+      <confidence>0.65</confidence>
+      <addedToLedger>true</addedToLedger>
+      <marketId>market_btc_100k_2025</marketId>
+      <marketUrl>http://localhost:3000/markets/market_btc_100k_2025</marketUrl>
+      <options>
+        <option><![CDATA[Yes, Bitcoin reaches $100k]]></option>
+        <option><![CDATA[No, stays below $100k]]></option>
       </options>
     </item>
   </channel>

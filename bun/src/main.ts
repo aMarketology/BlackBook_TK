@@ -59,6 +59,7 @@ import { debugConsole } from './lib/debug_console';
 import { formatVolume } from './lib/polymarket';
 import { UIBuilder } from './lib/ui_builder';
 import TransfersModule from './lib/transfers';
+import PriceActionModule from './lib/price_action';
 
 // ============================================
 // INTERFACES
@@ -124,48 +125,13 @@ async function loadMarkets() {
 
 async function loadActiveMarketsFromRSS() {
     try {
-        console.log('📡 Fetching event.rss for Active Markets...');
-        const response = await fetch('../../../blackBook/src/event.rss');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        console.log('📡 Fetching BlackBook events from RSS...');
+        const rssMarkets = await BackendService.getBlackbookEvents();
+        console.log(`✅ Fetched ${rssMarkets.length} events from RSS`);
         
-        const xmlText = await response.text();
-        console.log('📄 RSS fetched, parsing...');
-        
-        // Parse XML
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-        
-        if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
-            throw new Error('Failed to parse RSS XML');
-        }
-        
-        // Extract items
-        const items = xmlDoc.getElementsByTagName('item');
-        console.log(`✅ Found ${items.length} active markets in RSS`);
-        
-        const rssMarkets: any[] = [];
-        
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            
-            const title = item.getElementsByTagName('title')[0]?.textContent || 'Untitled Market';
-            const description = item.getElementsByTagName('description')[0]?.textContent || '';
-            const link = item.getElementsByTagName('link')[0]?.textContent || '#';
-            const confidence = parseFloat(item.getElementsByTagName('confidence')[0]?.textContent || '0');
-            const marketId = item.getElementsByTagName('marketId')[0]?.textContent || '';
-            
-            const options = Array.from(item.getElementsByTagName('option')).map((opt: any) => opt.textContent || '');
-            
-            rssMarkets.push({
-                title: title.replace(/^✅ ACTIVE MARKET - /, ''),
-                description,
-                link,
-                confidence,
-                marketId,
-                options
-            });
+        if (rssMarkets.length === 0) {
+            log('⚠️ No events available', 'warning');
+            return;
         }
         
         // Render the RSS markets
@@ -222,61 +188,60 @@ function renderBlackbookEvents(rssMarkets: any[]) {
         return;
     }
     
-    if (rssMarkets.length === 0) {
-        eventsContainer.innerHTML = '<p class="empty-state">No active BlackBook events available</p>';
+    // Filter events with confidence > 0.5
+    const highConfidenceEvents = rssMarkets.filter(market => market.confidence > 0.5);
+    
+    if (highConfidenceEvents.length === 0) {
+        eventsContainer.innerHTML = '<p class="empty-state">No high-confidence events available (need >50%)</p>';
         return;
     }
     
-    console.log(`📊 Rendering ${rssMarkets.length} BlackBook events with betting`);
+    console.log(`📊 Rendering ${highConfidenceEvents.length} high-confidence BlackBook events`);
     
-    eventsContainer.innerHTML = rssMarkets.map((market, idx) => `
+    eventsContainer.innerHTML = highConfidenceEvents.map((market, idx) => `
         <div class="event-card">
-            <div class="event-header">
-                <div>
-                    <h3>${market.title}</h3>
-                    <p class="event-description">${market.description}</p>
+            <div class="event-card-content">
+                <div class="event-title-section">
+                    <h3 class="event-title">${market.title}</h3>
+                    <span class="event-category">${market.category || 'general'}</span>
                 </div>
-                <span class="confidence-score" style="background: hsl(${Math.round(market.confidence * 120)}, 100%, 50%)">
-                    ${(market.confidence * 100).toFixed(0)}%
-                </span>
-            </div>
-            
-            <div class="betting-options">
-                ${market.options.map((option: string, optIdx: number) => `
-                    <div class="bet-option">
-                        <button class="bet-btn yes-btn" data-market="${idx}" data-outcome="${optIdx}">
-                            <span class="outcome-text">${option}</span>
-                            <span class="bet-action">Place Bet</span>
-                        </button>
+                
+                <p class="event-description">${market.description}</p>
+                
+                <div class="event-betting-section">
+                    <div class="betting-buttons">
+                        ${market.options.map((option: string, optIdx: number) => `
+                            <button class="event-bet-btn" data-market="${idx}" data-outcome="${optIdx}" data-title="${market.title.replace(/"/g, '&quot;')}" data-option="${option.replace(/"/g, '&quot;')}" data-market-id="${market.marketId}">
+                                <span class="bet-option-text">${option}</span>
+                            </button>
+                        `).join('')}
                     </div>
-                `).join('')}
+                </div>
             </div>
             
-            <div class="event-footer">
-                <a href="${market.link}" target="_blank" class="source-link">📖 Source →</a>
-                <span class="market-id" title="${market.marketId}">ID: ${market.marketId.substring(0, 8)}...</span>
+            <div class="event-card-footer">
+                <a href="${market.link}" target="_blank" class="event-source-link" title="Read source article">📖</a>
             </div>
         </div>
     `).join('');
     
     // Attach event listeners to bet buttons
-    setupBlackbookEventListeners(rssMarkets);
+    setupBlackbookEventListeners(highConfidenceEvents);
 }
 
-function setupBlackbookEventListeners(rssMarkets: any[]) {
-    const betButtons = document.querySelectorAll('.bet-btn');
+function setupBlackbookEventListeners(_rssMarkets: any[]) {
+    const betButtons = document.querySelectorAll('.event-bet-btn');
     betButtons.forEach((btn: any) => {
         btn.addEventListener('click', async (e: Event) => {
             const marketIdx = (e.currentTarget as HTMLElement).getAttribute('data-market');
             const outcomeIdx = (e.currentTarget as HTMLElement).getAttribute('data-outcome');
+            const marketId = (e.currentTarget as HTMLElement).getAttribute('data-market-id');
+            const option = (e.currentTarget as HTMLElement).getAttribute('data-option');
             
-            if (!marketIdx || !outcomeIdx) {
+            if (!marketIdx || !outcomeIdx || !marketId || !option) {
                 log('❌ Invalid bet data', 'error');
                 return;
             }
-            
-            const market = rssMarkets[parseInt(marketIdx)];
-            const outcome = market.options[parseInt(outcomeIdx)];
             
             if (!selectedAccount) {
                 log('❌ Please select an account first', 'error');
@@ -284,16 +249,16 @@ function setupBlackbookEventListeners(rssMarkets: any[]) {
             }
             
             // Show amount input dialog
-            const amount = prompt(`Enter amount to bet on "${outcome}" (in BB):`);
+            const amount = prompt(`Enter amount to bet on "${option}" (in BB):`);
             if (!amount || isNaN(parseFloat(amount))) {
                 log('❌ Invalid bet amount', 'error');
                 return;
             }
             
             try {
-                log(`🎯 Placing bet on "${outcome}" for ${amount} BB...`, 'info');
-                await BackendService.placeBet(market.marketId, selectedAccount.name, parseFloat(amount), outcome);
-                log(`✅ Bet placed successfully! ${amount} BB on "${outcome}"`, 'success');
+                log(`🎯 Placing bet on "${option}" for ${amount} BB...`, 'info');
+                await BackendService.placeBet(marketId, selectedAccount.name, parseFloat(amount), option);
+                log(`✅ Bet placed successfully! ${amount} BB on "${option}"`, 'success');
                 await loadAccounts();
             } catch (error) {
                 log(`❌ Bet failed: ${error}`, 'error');
@@ -322,38 +287,127 @@ async function loadPolymarketEvents() {
             return;
         }
         
-        log('🔮 Fetching Polymarket events...', 'info');
+        log('🔮 Fetching top 20 Polymarket events by volume...', 'info');
         
         // Call via BackendService - which uses Rust backend to bypass CORS
         const polymarketData: any[] = await BackendService.getPolymarketEvents();
-        log(`✅ Loaded ${polymarketData.length} Polymarket events`, 'success');
+        log(`📦 Polymarket API returned ${polymarketData.length} events`, 'info');
         
+        if (!Array.isArray(polymarketData)) {
+            const errMsg = `❌ Polymarket API returned non-array: ${typeof polymarketData}`;
+            log(errMsg, 'error');
+            console.error('Polymarket data structure:', polymarketData);
+            polyEl.innerHTML = `<p class="loading">${errMsg}</p>`;
+            return;
+        }
+        
+        if (polymarketData.length === 0) {
+            log('⚠️ No active Polymarket events available', 'warning');
+            polyEl.innerHTML = '<p class="loading">No active Polymarket events available</p>';
+            return;
+        }
+        
+        // Log first event structure for debugging
         if (polymarketData.length > 0) {
-            polyEl.innerHTML = polymarketData.map(m => `
+            const firstEvent = polymarketData[0];
+            log(`📋 Sample Polymarket event fields: ${Object.keys(firstEvent).join(', ')}`, 'info');
+            console.log('📊 First Polymarket event:', firstEvent);
+        }
+        
+        // Render events with detailed validation
+        const renderedCards: string[] = [];
+        polymarketData.forEach((event, idx) => {
+            try {
+                // Events endpoint returns events with nested markets array
+                const eventTitle = event.title || event.question || `Event ${idx}`;
+                const eventDescription = event.description || '';
+                const eventVolume = event.volume24hr || event.volume_24h || event.volume || 0;
+                
+                // Get the first market from this event (most trading)
+                const markets = event.markets || [];
+                if (markets.length === 0) {
+                    log(`⚠️ Event ${idx} "${eventTitle}" has no markets`, 'warning');
+                    return;
+                }
+                
+                const market = markets[0];
+                
+                // Parse outcomes - they may be JSON strings or arrays
+                let outcomes = market.outcomes || [];
+                if (typeof outcomes === 'string') {
+                    try {
+                        outcomes = JSON.parse(outcomes);
+                    } catch (e) {
+                        outcomes = ['Yes', 'No'];
+                    }
+                }
+                
+                // Parse prices - they may be JSON strings or arrays
+                let prices = market.outcomePrices || [];
+                if (typeof prices === 'string') {
+                    try {
+                        prices = JSON.parse(prices);
+                    } catch (e) {
+                        prices = [0.5, 0.5];
+                    }
+                }
+                
+                // Convert string prices to numbers if needed
+                prices = prices.map((p: any) => typeof p === 'string' ? parseFloat(p) : p);
+                
+                log(`✅ Event ${idx}: "${eventTitle}" - Volume: $${(eventVolume/1000).toFixed(1)}K`, 'success');
+                
+                // Validate prices array
+                if (!Array.isArray(prices) || prices.length < 2) {
+                    prices = [0.5, 0.5];
+                }
+                
+                // Validate outcomes array
+                if (!Array.isArray(outcomes) || outcomes.length < 2) {
+                    outcomes = ['Yes', 'No'];
+                }
+                
+                const safePrice0 = Math.min(99, Math.max(1, Math.round((prices[0] || 0.5) * 100)));
+                const safePrice1 = Math.min(99, Math.max(1, Math.round((prices[1] || 0.5) * 100)));
+                
+                renderedCards.push(`
                 <div class="market-card">
-                    <h3>${m.question}</h3>
-                    <p>${m.description || 'No description'}</p>
+                    <h3>${eventTitle}</h3>
+                    <p>${eventDescription || 'Popular prediction market'}</p>
                     <div class="market-prices">
                         <div class="price-column">
-                            <span class="label">${m.outcomes[0] || 'YES'}</span>
-                            <span class="price">${(m.outcome_prices[0] * 100).toFixed(0)}¢</span>
+                            <span class="label">${String(outcomes[0]).substring(0, 20)}</span>
+                            <span class="price">${safePrice0}¢</span>
                         </div>
                         <div class="price-column">
-                            <span class="label">${m.outcomes[1] || 'NO'}</span>
-                            <span class="price">${(m.outcome_prices[1] * 100).toFixed(0)}¢</span>
+                            <span class="label">${String(outcomes[1]).substring(0, 20)}</span>
+                            <span class="price">${safePrice1}¢</span>
                         </div>
                     </div>
-                    <div class="market-volume">Vol: ${formatVolume(m.volume_24h || m.volume || 0)}</div>
+                    <div class="market-volume">24h Vol: ${formatVolume(eventVolume)}</div>
                 </div>
-            `).join('');
+            `);
+            } catch (cardError) {
+                log(`❌ Error rendering Polymarket event ${idx}: ${cardError}`, 'error');
+                console.error(`Card rendering error for event ${idx}:`, cardError, event);
+            }
+        });
+        
+        if (renderedCards.length > 0) {
+            polyEl.innerHTML = renderedCards.join('');
+            log(`✅ Successfully rendered ${renderedCards.length} top Polymarket events`, 'success');
         } else {
-            polyEl.innerHTML = '<p class="loading">No Polymarket events available</p>';
+            polyEl.innerHTML = '<p class="loading">No valid Polymarket events could be rendered</p>';
+            log('❌ All Polymarket events failed to render', 'error');
         }
     } catch (error) {
-        log(`⚠️ Polymarket fetch failed: ${error}`, 'warning');
+        const errMsg = `❌ Polymarket API Error: ${error instanceof Error ? error.message : String(error)}`;
+        log(errMsg, 'error');
+        console.error('Polymarket fetch detailed error:', error);
+        
         const polyEl = document.getElementById('polymarketEvents');
         if (polyEl) {
-            polyEl.innerHTML = `<p class="loading">Error loading Polymarket events: ${error}</p>`;
+            polyEl.innerHTML = `<p class="loading" style="color: #e63946;">${errMsg}</p>`;
         }
     }
 }
@@ -475,6 +529,7 @@ function closeAccountsDropdown() {
 function switchPage(page: string) {
     const mainContainer = document.getElementById('mainContainer') as HTMLElement;
     const transfersContainer = document.getElementById('transfersContainer') as HTMLElement;
+    const priceActionContainer = document.getElementById('priceActionContainer') as HTMLElement;
     
     if (page === 'transfers') {
         log('🔄 Opening Transfers Page...', 'info');
@@ -485,10 +540,17 @@ function switchPage(page: string) {
             TransfersModule.populateTransferSelects();
             TransfersModule.updateTransferStats();
         }
+        if (priceActionContainer) priceActionContainer.classList.add('hidden');
+    } else if (page === 'priceAction') {
+        log('⚡ Opening Price Action...', 'info');
+        if (mainContainer) mainContainer.classList.add('hidden');
+        if (transfersContainer) transfersContainer.classList.add('hidden');
+        if (priceActionContainer) priceActionContainer.classList.remove('hidden');
     } else if (page === 'markets') {
         log('📊 Returning to Markets...', 'info');
         if (mainContainer) mainContainer.classList.remove('hidden');
         if (transfersContainer) transfersContainer.classList.add('hidden');
+        if (priceActionContainer) priceActionContainer.classList.add('hidden');
     }
 }
 
@@ -524,6 +586,16 @@ async function init() {
         
         // Initialize transfers module with loaded accounts
         TransfersModule.initialize(accounts);
+        
+        // Initialize price action module
+        PriceActionModule.initialize(accounts);
+        
+        // Build and append Price Action container
+        const priceActionContainer = document.createElement('div');
+        priceActionContainer.id = 'priceActionContainer';
+        priceActionContainer.className = 'page-container hidden';
+        priceActionContainer.appendChild(PriceActionModule.buildUI());
+        app.appendChild(priceActionContainer);
         
         await loadMarkets();
         await loadActiveMarketsFromRSS();
@@ -584,6 +656,14 @@ function setupEventListeners() {
         transfersBtn.addEventListener('click', () => {
             switchPage('transfers');
             TransfersModule.updateTransferStats();
+        });
+    }
+    
+    // Price Action button
+    const priceActionBtn = document.getElementById('priceActionBtn');
+    if (priceActionBtn) {
+        priceActionBtn.addEventListener('click', () => {
+            switchPage('priceAction');
         });
     }
     

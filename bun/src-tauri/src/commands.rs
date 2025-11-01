@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use tauri::State;
 use blackbook_prediction_market::ledger::{Ledger, Recipe, Transaction};
+use blackbook_prediction_market::markets::{Market, Bet};
 
 /// Response DTO for live prices
 #[derive(Debug, Serialize, Clone)]
@@ -184,47 +185,6 @@ pub struct MarketInfo {
     pub winning_outcome: Option<String>,
 }
 
-/// Create a new prediction market
-#[tauri::command]
-pub fn create_market(
-    title: String,
-    description: String,
-    initial_liquidity: f64,
-    state: State<AppState>
-) -> Result<MarketInfo, String> {
-    let mut ledger = state.lock().map_err(|e| e.to_string())?;
-    
-    // Generate a unique market ID
-    let market_id = format!("MARKET_{}", uuid::Uuid::new_v4().to_string().replace("-", "").to_uppercase()[..8].to_string());
-    
-    // Create market with CSMM (Constant Sum Market Maker)
-    // Initial liquidity split 50/50 between YES and NO
-    let yes_shares = initial_liquidity / 2.0;
-    let no_shares = initial_liquidity / 2.0;
-    
-    // CSMM pricing: price = shares / (yes_shares + no_shares)
-    let total_shares = yes_shares + no_shares;
-    let yes_price = yes_shares / total_shares;
-    let no_price = no_shares / total_shares;
-    
-    // Record market creation transaction
-    // Using add_tokens as a system operation to record market creation
-    ledger.add_tokens("SYSTEM", 0.0).map_err(|e| format!("Failed to record market creation: {}", e))?;
-    
-    Ok(MarketInfo {
-        id: market_id,
-        title,
-        description,
-        yes_shares,
-        no_shares,
-        yes_price,
-        no_price,
-        total_volume: 0.0,
-        is_resolved: false,
-        winning_outcome: None,
-    })
-}
-
 /// Get all prediction markets
 #[tauri::command]
 pub fn get_markets(state: State<AppState>) -> Result<Vec<MarketInfo>, String> {
@@ -272,41 +232,6 @@ pub fn get_markets(state: State<AppState>) -> Result<Vec<MarketInfo>, String> {
     ])
 }
 
-/// Place a bet on a prediction market
-#[tauri::command]
-pub fn place_market_bet(
-    market_id: String,
-    account_name: String,
-    amount: f64,
-    outcome: String, // "YES" or "NO"
-    state: State<AppState>
-) -> Result<String, String> {
-    let mut ledger = state.lock().map_err(|e| e.to_string())?;
-    
-    // Validate account has sufficient balance
-    let balance = ledger.get_balance(&account_name);
-    if balance < amount {
-        return Err(format!("Insufficient balance: {} BB available, {} BB required", balance, amount));
-    }
-    
-    // Get account address
-    let address = ledger.accounts.get(&account_name)
-        .ok_or("Account not found")?
-        .clone();
-    
-    // Place the bet using the existing place_bet method which handles balance deduction and transaction recording
-    let bet_id = format!("BET_{}", uuid::Uuid::new_v4().to_string().replace("-", "").to_uppercase()[..8].to_string());
-    let full_market_id = format!("{}_{}", market_id, outcome);
-    
-    // Use the existing place_bet method that handles deduction and transaction recording
-    ledger.place_bet(&account_name, &full_market_id, amount)?;
-    
-    // Record the bet win/loss tracking for later resolution
-    ledger.record_bet_win(&account_name, 0.0, &bet_id); // 0 amount initially, updated on resolution
-    
-    Ok(format!("Successfully placed {} BB bet on {} for market {}", amount, outcome, market_id))
-}
-
 /// Fetch live prices from CoinGecko API
 #[tauri::command]
 pub async fn get_prices() -> Result<PriceResponse, String> {
@@ -352,25 +277,297 @@ pub async fn get_prices() -> Result<PriceResponse, String> {
 #[tauri::command]
 pub async fn get_polymarket_events() -> Result<Vec<serde_json::Value>, String> {
     let client = reqwest::Client::new();
+    let api_url = "https://gamma-api.polymarket.com/events";
+    
+    println!("🔮 [Polymarket API] Fetching top 20 events sorted by 24h volume");
     
     let response = client
-        .get("https://gamma-api.polymarket.com/markets")
-        .query(&[("limit", "50"), ("active", "true")])
+        .get(api_url)
+        .query(&[
+            ("sort_by", "volume_24hr"),
+            ("ascending", "false"),
+            ("closed", "false"),
+            ("limit", "20")
+        ])
         .send()
         .await
-        .map_err(|e| format!("Failed to fetch Polymarket events: {}", e))?;
+        .map_err(|e| {
+            let err_msg = format!("🔴 [Polymarket API] Failed to connect: {}", e);
+            println!("{}", err_msg);
+            err_msg
+        })?;
 
-    if !response.status().is_success() {
-        return Err(format!("Polymarket API error: {}", response.status()));
+    let status = response.status();
+    println!("📡 [Polymarket API] Response status: {}", status);
+    
+    if !status.is_success() {
+        let err_msg = format!("🔴 [Polymarket API] HTTP error: {} {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown"));
+        println!("{}", err_msg);
+        return Err(err_msg);
     }
 
-    let mut markets: Vec<serde_json::Value> = response
+    let content_length = response.content_length();
+    println!("📦 [Polymarket API] Content length: {:?} bytes", content_length);
+
+    let mut events: Vec<serde_json::Value> = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse Polymarket response: {}", e))?;
+        .map_err(|e| {
+            let err_msg = format!("🔴 [Polymarket API] Failed to parse JSON response: {}", e);
+            println!("{}", err_msg);
+            err_msg
+        })?;
 
-    // Take only the first 7 markets
-    markets.truncate(7);
+    println!("✅ [Polymarket API] Successfully parsed {} events from response", events.len());
     
+    // Log sample event structure
+    if !events.is_empty() {
+        if let Some(first_event) = events.first() {
+            let keys: Vec<String> = first_event
+                .as_object()
+                .map(|obj| obj.keys().cloned().collect())
+                .unwrap_or_default();
+            println!("📋 [Polymarket API] First event fields: {}", keys.join(", "));
+            println!("📋 [Polymarket API] Sample event: {}", serde_json::to_string_pretty(first_event).unwrap_or_default());
+        }
+    }
+
+    // Take only the first 20 events
+    events.truncate(20);
+    
+    println!("✅ [Polymarket API] Returning {} top events by volume to frontend", events.len());
+    Ok(events)
+}
+
+/// Get BlackBook events from RSS feed
+#[tauri::command]
+pub async fn get_blackbook_events() -> Result<Vec<serde_json::Value>, String> {
+    use std::fs;
+    use std::path::Path;
+    
+    // Try to read the RSS file from the project
+    let rss_paths = vec![
+        "blackBook/src/event.rss",
+        "../blackBook/src/event.rss",
+        "../../blackBook/src/event.rss",
+    ];
+    
+    let mut rss_content = String::new();
+    let mut found = false;
+    
+    for path in rss_paths {
+        if Path::new(path).exists() {
+            match fs::read_to_string(path) {
+                Ok(content) => {
+                    rss_content = content;
+                    found = true;
+                    break;
+                }
+                Err(_) => continue,
+            }
+        }
+    }
+    
+    if !found {
+        return Err("RSS file not found".to_string());
+    }
+    
+    // Parse XML
+    match roxmltree::Document::parse(&rss_content) {
+        Ok(doc) => {
+            let mut events = Vec::new();
+            
+            for item in doc.root().descendants() {
+                if item.is_element() && item.tag_name().name() == "item" {
+                    let mut event = serde_json::json!({});
+                    
+                    for child in item.children().filter(|n| n.is_element()) {
+                        let tag_name = child.tag_name().name();
+                        match tag_name {
+                            "title" => {
+                                if let Some(text) = child.text() {
+                                    event["title"] = serde_json::Value::String(
+                                        text.replace("✅ ACTIVE MARKET - ", "")
+                                    );
+                                }
+                            }
+                            "description" => {
+                                if let Some(text) = child.text() {
+                                    event["description"] = serde_json::Value::String(text.to_string());
+                                }
+                            }
+                            "link" => {
+                                if let Some(text) = child.text() {
+                                    event["link"] = serde_json::Value::String(text.to_string());
+                                }
+                            }
+                            "category" => {
+                                if let Some(text) = child.text() {
+                                    event["category"] = serde_json::Value::String(text.to_string());
+                                }
+                            }
+                            "confidence" => {
+                                if let Some(text) = child.text() {
+                                    if let Ok(conf) = text.parse::<f64>() {
+                                        if let Some(num) = serde_json::Number::from_f64(conf) {
+                                            event["confidence"] = serde_json::Value::Number(num);
+                                        }
+                                    }
+                                }
+                            }
+                            "marketId" => {
+                                if let Some(text) = child.text() {
+                                    event["marketId"] = serde_json::Value::String(text.to_string());
+                                }
+                            }
+                            "options" => {
+                                let mut options = Vec::new();
+                                for opt_child in child.children().filter(|n| n.is_element()) {
+                                    if opt_child.tag_name().name() == "option" {
+                                        if let Some(text) = opt_child.text() {
+                                            options.push(serde_json::Value::String(text.to_string()));
+                                        }
+                                    }
+                                }
+                                event["options"] = serde_json::Value::Array(options);
+                            }
+                            _ => {}
+                        }
+                    }
+                    
+                    if !event.is_null() && event.get("title").is_some() {
+                        events.push(event);
+                    }
+                }
+            }
+            
+            Ok(events)
+        },
+        Err(e) => Err(format!("Failed to parse RSS XML: {}", e)),
+    }
+}
+
+
+// ============================================
+// PRODUCTION PREDICTION MARKET COMMANDS
+// ============================================
+
+/// DTO for creating a market
+#[derive(Debug, Deserialize)]
+pub struct CreateMarketRequest {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub outcomes: Vec<String>,
+    pub category: String,
+    pub resolution_source: String,
+}
+
+/// DTO for placing a market bet
+#[derive(Debug, Deserialize)]
+pub struct PlaceMarketBetRequest {
+    pub account: String,
+    pub market_id: String,
+    pub outcome_index: usize,
+    pub amount: f64,
+}
+
+/// DTO for resolving a market
+#[derive(Debug, Deserialize)]
+pub struct ResolveMarketRequest {
+    pub market_id: String,
+    pub winning_outcome: usize,
+}
+
+/// Create a new prediction market
+#[tauri::command]
+pub fn create_market(req: CreateMarketRequest, state: State<AppState>) -> Result<String, String> {
+    let mut ledger = state.lock().map_err(|e| e.to_string())?;
+    
+    println!("📈 Creating market: {} - {}", req.id, req.title);
+    
+    ledger.market_manager.create_market(
+        req.id.clone(),
+        req.title,
+        req.description,
+        req.outcomes,
+        req.category,
+        req.resolution_source,
+    )
+}
+
+/// Get all open markets
+#[tauri::command]
+pub fn get_open_markets(state: State<AppState>) -> Result<Vec<Market>, String> {
+    let ledger = state.lock().map_err(|e| e.to_string())?;
+    Ok(ledger.market_manager.get_open_markets())
+}
+
+/// Get market statistics
+#[tauri::command]
+pub fn get_market_stats(market_id: String, state: State<AppState>) -> Result<serde_json::Value, String> {
+    let ledger = state.lock().map_err(|e| e.to_string())?;
+    
+    match ledger.market_manager.get_market_stats(&market_id) {
+        Some(stats) => Ok(serde_json::to_value(stats).map_err(|e| e.to_string())?),
+        None => Err(format!("Market {} not found", market_id)),
+    }
+}
+
+/// Place a bet on a market outcome WITH ESCROW
+#[tauri::command]
+pub fn place_market_bet(req: PlaceMarketBetRequest, state: State<AppState>) -> Result<Bet, String> {
+    let mut ledger = state.lock().map_err(|e| e.to_string())?;
+    
+    println!("🎯 Placing bet WITH ESCROW: {} - {} BB on market {} outcome {}", 
+             req.account, req.amount, req.market_id, req.outcome_index);
+    
+    // Use the new escrow-integrated bet placement method
+    let bet = ledger.place_market_bet(&req.account, &req.market_id, req.outcome_index, req.amount)?;
+    
+    println!("✅ Bet placed successfully: {} - Escrow locked {} BB", bet.id, req.amount);
+    
+    Ok(bet)
+}
+
+/// Close a market (stop accepting bets)
+#[tauri::command]
+pub fn close_market(market_id: String, state: State<AppState>) -> Result<String, String> {
+    let mut ledger = state.lock().map_err(|e| e.to_string())?;
+    ledger.market_manager.close_market(market_id)
+}
+
+/// Resolve a market with winning outcome and distribute payouts WITH ESCROW
+#[tauri::command]
+pub fn resolve_market(req: ResolveMarketRequest, state: State<AppState>) -> Result<Vec<(String, f64)>, String> {
+    let mut ledger = state.lock().map_err(|e| e.to_string())?;
+    
+    println!("✅ Resolving market {} to outcome {} (WITH ESCROW)", req.market_id, req.winning_outcome);
+    
+    // Use the new escrow-integrated resolve method
+    let payouts = ledger.resolve_market_with_escrow(&req.market_id, req.winning_outcome)?;
+    
+    // Log all payouts
+    for (account_address, payout_amount) in &payouts {
+        println!("💰 Escrow Payout: {} wins {} BB", account_address, payout_amount);
+    }
+    
+    println!("✅ Market {} resolved successfully with {} payouts", req.market_id, payouts.len());
+    
+    Ok(payouts)
+}
+
+/// Get user's active bets
+#[tauri::command]
+pub fn get_user_bets(account: String, state: State<AppState>) -> Result<Vec<Bet>, String> {
+    let ledger = state.lock().map_err(|e| e.to_string())?;
+    Ok(ledger.market_manager.get_account_bets(&account))
+}
+
+/// Get all markets (including closed and resolved)
+#[tauri::command]
+pub fn get_all_markets(state: State<AppState>) -> Result<Vec<Market>, String> {
+    let ledger = state.lock().map_err(|e| e.to_string())?;
+    let markets: Vec<Market> = ledger.market_manager.markets.values().cloned().collect();
     Ok(markets)
 }

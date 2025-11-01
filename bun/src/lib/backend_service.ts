@@ -203,6 +203,30 @@ export class BackendService {
         }
     }
 
+    /**
+     * Record a bet win
+     */
+    static async recordBetWin(account: string, amount: number, betId: string): Promise<void> {
+        try {
+            await invoke('record_bet_win', { account, amount, betId });
+        } catch (error) {
+            console.error('❌ Record bet win failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Record a bet loss
+     */
+    static async recordBetLoss(account: string, amount: number, betId: string): Promise<void> {
+        try {
+            await invoke('record_bet_loss', { account, amount, betId });
+        } catch (error) {
+            console.error('❌ Record bet loss failed:', error);
+            throw error;
+        }
+    }
+
     // ============================================
     // EXTERNAL DATA
     // ============================================
@@ -227,6 +251,18 @@ export class BackendService {
             return await invoke('get_polymarket_events') as any[];
         } catch (error) {
             console.error('❌ Polymarket fetch failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get BlackBook Events from RSS feed
+     */
+    static async getBlackbookEvents(): Promise<any[]> {
+        try {
+            return await invoke('get_blackbook_events') as any[];
+        } catch (error) {
+            console.error('❌ BlackBook events fetch failed:', error);
             throw error;
         }
     }

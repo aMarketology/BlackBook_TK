@@ -95,6 +95,13 @@ export class UIBuilder {
         transfersBtn.textContent = '🔄 Transfers';
         networkInfo.appendChild(transfersBtn);
         
+        // Price Action button
+        const priceActionBtn = document.createElement('button');
+        priceActionBtn.className = 'badge badge-button';
+        priceActionBtn.id = 'priceActionBtn';
+        priceActionBtn.textContent = '⚡ Price Action';
+        networkInfo.appendChild(priceActionBtn);
+        
         headerLeft.appendChild(networkInfo);
         
         // Right side - account selector

@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use crate::markets::{MarketManager, Bet};
+use crate::escrow::EscrowManager;
 
 /// Minimal blockchain ledger for BlackBook prediction market
 /// Each account is a real wallet with persistent balance
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Ledger {
     /// Mapping from display name -> wallet address (L1_... uppercase)
     pub accounts: HashMap<String, String>,
@@ -16,6 +18,12 @@ pub struct Ledger {
 
     /// Platform Activity Recipes - comprehensive record of all activities
     pub recipes: Vec<Recipe>,
+
+    /// Production prediction market manager
+    pub market_manager: MarketManager,
+
+    /// Escrow manager for locking funds during active bets
+    pub escrow_manager: EscrowManager,
 }
 
 /// Simple transaction record (stores addresses in `from` and `to`)
@@ -95,6 +103,8 @@ impl Ledger {
             balances,
             transactions: Vec::new(),
             recipes: Vec::new(),
+            market_manager: MarketManager::new(),
+            escrow_manager: EscrowManager::new(),
         }
     }
 
@@ -419,5 +429,143 @@ impl Ledger {
             Some(bet_id.to_string()),
         );
         self.recipes.push(recipe);
+    }
+
+    /// Place a market bet with escrow integration
+    /// This handles: 1) Balance deduction, 2) Escrow lock, 3) Market bet placement, 4) Recipe creation
+    pub fn place_market_bet(
+        &mut self,
+        account_name: &str,
+        market_id: &str,
+        outcome_index: usize,
+        amount: f64,
+    ) -> Result<Bet, String> {
+        // Resolve account address
+        let address = self.resolve_address(account_name);
+        
+        // Check balance
+        let balance = self.get_balance(&address);
+        if balance < amount {
+            return Err(format!(
+                "Insufficient balance: {} has {} BB but needs {} BB",
+                account_name, balance, amount
+            ));
+        }
+
+        // Create escrow for this market if it doesn't exist
+        if self.escrow_manager.get_escrow(market_id).is_none() {
+            self.escrow_manager.create_escrow(market_id);
+        }
+
+        // Deduct balance
+        self.balances.insert(address.clone(), balance - amount);
+
+        // Lock funds in escrow (convert to u64 for escrow - we'll use BB tokens as whole units)
+        let amount_u64 = (amount * 100.0) as u64; // Store as cents to avoid floating point issues
+        self.escrow_manager
+            .lock_funds(market_id, &address, amount_u64)
+            .map_err(|e| format!("Failed to lock escrow: {}", e))?;
+
+        // Generate bet ID
+        let bet_id = format!("bet_{}_{}", market_id, uuid::Uuid::new_v4().simple());
+
+        // Place bet in market manager
+        let bet = self.market_manager
+            .place_bet(bet_id.clone(), address.clone(), market_id.to_string(), outcome_index, amount)?;
+
+        // Record transaction
+        let tx = Transaction {
+            from: address.clone(),
+            to: format!("ESCROW_{}", market_id),
+            amount,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+            tx_type: "market_bet".to_string(),
+        };
+        self.transactions.push(tx);
+
+        // Create recipe
+        let market = self.market_manager.markets.get(market_id)
+            .ok_or_else(|| "Market not found".to_string())?;
+        let outcome_name = market.outcomes.get(outcome_index)
+            .ok_or_else(|| "Invalid outcome index".to_string())?;
+        
+        let recipe = self.create_recipe(
+            "bet_placed",
+            account_name,
+            amount,
+            &format!("Placed {} BB bet on '{}' in market '{}'", amount, outcome_name, market.title),
+            Some(bet.id.clone()),
+        );
+        self.recipes.push(recipe);
+
+        Ok(bet)
+    }
+
+    /// Resolve a market and distribute payouts
+    /// This handles: 1) Market resolution, 2) Escrow release, 3) Payout distribution, 4) Recipe creation
+    pub fn resolve_market_with_escrow(
+        &mut self,
+        market_id: &str,
+        winning_outcome: usize,
+    ) -> Result<Vec<(String, f64)>, String> {
+        // Mark escrow as resolved
+        self.escrow_manager
+            .mark_resolved(market_id)
+            .map_err(|e| format!("Failed to mark escrow resolved: {}", e))?;
+
+        // Resolve market and get payouts
+        let payouts = self.market_manager
+            .resolve_market(market_id.to_string(), winning_outcome)?;
+
+        // Distribute payouts
+        let mut successful_payouts = Vec::new();
+        for (account_address, payout_amount) in payouts {
+            // Release from escrow
+            let amount_u64 = (payout_amount * 100.0) as u64;
+            self.escrow_manager
+                .release_funds(market_id, &account_address, amount_u64)
+                .map_err(|e| format!("Failed to release escrow for {}: {}", account_address, e))?;
+
+            // Add payout to balance
+            let current_balance = self.balances.get(&account_address).copied().unwrap_or(0.0);
+            self.balances.insert(account_address.clone(), current_balance + payout_amount);
+
+            // Record transaction
+            let tx = Transaction {
+                from: format!("ESCROW_{}", market_id),
+                to: account_address.clone(),
+                amount: payout_amount,
+                timestamp: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs(),
+                tx_type: "market_payout".to_string(),
+            };
+            self.transactions.push(tx);
+
+            // Find account name from address
+            let account_name = self.accounts
+                .iter()
+                .find(|(_, addr)| *addr == &account_address)
+                .map(|(name, _)| name.clone())
+                .unwrap_or(account_address.clone());
+
+            // Create recipe for payout
+            let recipe = self.create_recipe(
+                "bet_win",
+                &account_name,
+                payout_amount,
+                &format!("Won {} BB from market resolution", payout_amount),
+                Some(market_id.to_string()),
+            );
+            self.recipes.push(recipe);
+
+            successful_payouts.push((account_address, payout_amount));
+        }
+
+        Ok(successful_payouts)
     }
 }

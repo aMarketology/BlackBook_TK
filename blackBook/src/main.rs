@@ -13,6 +13,8 @@ use uuid::Uuid;
 
 mod ledger;
 mod hot_upgrades;
+mod markets;
+mod escrow;
 use ledger::Ledger;
 use hot_upgrades::{ProxyState, AuthorizedAccount, AuthorityLevel};
 

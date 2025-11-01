@@ -126,6 +126,22 @@ class BackendService {
       throw error;
     }
   }
+  static async recordBetWin(account, amount, betId) {
+    try {
+      await invoke("record_bet_win", { account, amount, betId });
+    } catch (error) {
+      console.error("❌ Record bet win failed:", error);
+      throw error;
+    }
+  }
+  static async recordBetLoss(account, amount, betId) {
+    try {
+      await invoke("record_bet_loss", { account, amount, betId });
+    } catch (error) {
+      console.error("❌ Record bet loss failed:", error);
+      throw error;
+    }
+  }
   static async getPrices() {
     try {
       return await invoke("get_prices");
@@ -139,6 +155,14 @@ class BackendService {
       return await invoke("get_polymarket_events");
     } catch (error) {
       console.error("❌ Polymarket fetch failed:", error);
+      throw error;
+    }
+  }
+  static async getBlackbookEvents() {
+    try {
+      return await invoke("get_blackbook_events");
+    } catch (error) {
+      console.error("❌ BlackBook events fetch failed:", error);
       throw error;
     }
   }
@@ -347,6 +371,11 @@ class UIBuilder {
     transfersBtn.id = "transfersBtn";
     transfersBtn.textContent = "\uD83D\uDD04 Transfers";
     networkInfo.appendChild(transfersBtn);
+    const priceActionBtn = document.createElement("button");
+    priceActionBtn.className = "badge badge-button";
+    priceActionBtn.id = "priceActionBtn";
+    priceActionBtn.textContent = "⚡ Price Action";
+    networkInfo.appendChild(priceActionBtn);
     headerLeft.appendChild(networkInfo);
     const headerRight = document.createElement("div");
     headerRight.className = "header-right";
@@ -770,6 +799,300 @@ class TransfersModule {
 }
 var transfers_default = TransfersModule;
 
+// src/lib/price_action.ts
+class PriceActionModule {
+  activeBets = new Map;
+  currentPrices = { btc: 0, sol: 0 };
+  initialize(_accounts) {
+    this.startPriceUpdates();
+  }
+  async startPriceUpdates() {
+    setInterval(async () => {
+      try {
+        const prices = await BackendService.getPrices();
+        this.currentPrices = prices;
+        this.updatePriceDisplay();
+        this.checkActiveBets();
+      } catch (error) {
+        console.error("Price update failed:", error);
+      }
+    }, 5000);
+    try {
+      const prices = await BackendService.getPrices();
+      this.currentPrices = prices;
+      this.updatePriceDisplay();
+    } catch (error) {
+      console.error("Initial price fetch failed:", error);
+    }
+  }
+  updatePriceDisplay() {
+    const btcPriceEl = document.getElementById("btcCurrentPrice");
+    const solPriceEl = document.getElementById("solCurrentPrice");
+    if (btcPriceEl) {
+      btcPriceEl.textContent = `$${this.currentPrices.btc.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    if (solPriceEl) {
+      solPriceEl.textContent = `$${this.currentPrices.sol.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+  }
+  async placePriceBet(asset, direction, amount, duration, account) {
+    const betId = `price_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const startPrice = asset === "BTC" ? this.currentPrices.btc : this.currentPrices.sol;
+    const startTime = Date.now();
+    const endTime = startTime + duration * 1000;
+    const bet = {
+      id: betId,
+      asset,
+      account,
+      direction,
+      amount,
+      startPrice,
+      endPrice: null,
+      duration,
+      startTime,
+      endTime,
+      status: "ACTIVE"
+    };
+    try {
+      const marketId = `${asset}_${direction}_${duration}`;
+      await BackendService.placeBet(marketId, account, amount, direction);
+      this.activeBets.set(betId, bet);
+      this.renderActiveBets();
+      debugConsole.log(`\uD83C\uDFAF Price bet placed: ${amount} BB on ${asset} ${direction} (${duration}s)`, "success");
+      setTimeout(() => {
+        this.resolveBet(betId);
+      }, duration * 1000);
+    } catch (error) {
+      debugConsole.log(`❌ Failed to place price bet: ${error}`, "error");
+      throw error;
+    }
+  }
+  async resolveBet(betId) {
+    const bet = this.activeBets.get(betId);
+    if (!bet || bet.status !== "ACTIVE")
+      return;
+    const endPrice = bet.asset === "BTC" ? this.currentPrices.btc : this.currentPrices.sol;
+    bet.endPrice = endPrice;
+    const priceIncreased = endPrice > bet.startPrice;
+    const won = bet.direction === "HIGHER" && priceIncreased || bet.direction === "LOWER" && !priceIncreased;
+    bet.status = won ? "WON" : "LOST";
+    if (won) {
+      const payout = bet.amount * 2;
+      try {
+        await BackendService.recordBetWin(bet.account, payout, betId);
+        debugConsole.log(`\uD83C\uDF89 Price bet WON! ${bet.asset} went ${bet.direction}. Payout: ${payout} BB`, "success");
+      } catch (error) {
+        debugConsole.log(`❌ Failed to record win: ${error}`, "error");
+      }
+    } else {
+      try {
+        await BackendService.recordBetLoss(bet.account, bet.amount, betId);
+        debugConsole.log(`❌ Price bet LOST. ${bet.asset} went ${priceIncreased ? "HIGHER" : "LOWER"}`, "error");
+      } catch (error) {
+        debugConsole.log(`❌ Failed to record loss: ${error}`, "error");
+      }
+    }
+    this.renderActiveBets();
+  }
+  checkActiveBets() {
+    const now = Date.now();
+    for (const [betId, bet] of this.activeBets.entries()) {
+      if (bet.status === "ACTIVE" && now >= bet.endTime) {
+        this.resolveBet(betId);
+      }
+    }
+  }
+  renderActiveBets() {
+    const container = document.getElementById("activePriceBets");
+    if (!container)
+      return;
+    const bets = Array.from(this.activeBets.values()).sort((a, b) => b.startTime - a.startTime).slice(0, 10);
+    if (bets.length === 0) {
+      container.innerHTML = '<p class="empty-state">No active price bets</p>';
+      return;
+    }
+    container.innerHTML = bets.map((bet) => {
+      const now = Date.now();
+      const remainingMs = Math.max(0, bet.endTime - now);
+      const remainingSeconds = Math.floor(remainingMs / 1000);
+      const minutes = Math.floor(remainingSeconds / 60);
+      const seconds = remainingSeconds % 60;
+      const priceChange = bet.endPrice ? ((bet.endPrice - bet.startPrice) / bet.startPrice * 100).toFixed(2) : "...";
+      const statusClass = bet.status === "WON" ? "won" : bet.status === "LOST" ? "lost" : "active";
+      const statusIcon = bet.status === "WON" ? "\uD83C\uDF89" : bet.status === "LOST" ? "❌" : "⏳";
+      return `
+                <div class="price-bet-card ${statusClass}">
+                    <div class="bet-header">
+                        <span class="bet-asset">${bet.asset}</span>
+                        <span class="bet-direction ${bet.direction.toLowerCase()}">${bet.direction}</span>
+                        <span class="bet-status">${statusIcon} ${bet.status}</span>
+                    </div>
+                    <div class="bet-details">
+                        <div class="bet-row">
+                            <span>Start Price:</span>
+                            <span>$${bet.startPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        ${bet.endPrice ? `
+                        <div class="bet-row">
+                            <span>End Price:</span>
+                            <span>$${bet.endPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div class="bet-row">
+                            <span>Change:</span>
+                            <span class="${parseFloat(priceChange) > 0 ? "positive" : "negative"}">${priceChange}%</span>
+                        </div>
+                        ` : `
+                        <div class="bet-row">
+                            <span>Time Left:</span>
+                            <span>${minutes}:${seconds.toString().padStart(2, "0")}</span>
+                        </div>
+                        `}
+                        <div class="bet-row">
+                            <span>Amount:</span>
+                            <span>${bet.amount} BB</span>
+                        </div>
+                        <div class="bet-row">
+                            <span>Duration:</span>
+                            <span>${bet.duration === 60 ? "1 min" : "15 min"}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+    }).join("");
+  }
+  buildUI() {
+    const container = document.createElement("div");
+    container.className = "price-action-container";
+    container.innerHTML = `
+            <div class="page-header">
+                <h2>⚡ Price Action Betting</h2>
+                <p class="subtitle">Bet on Bitcoin and Solana price movements</p>
+            </div>
+
+            <div class="price-grid">
+                <!-- Bitcoin Card -->
+                <div class="price-card">
+                    <div class="price-header">
+                        <h3>₿ Bitcoin</h3>
+                        <div class="current-price">
+                            <span class="price-label">Current Price</span>
+                            <span class="price-value" id="btcCurrentPrice">$0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="betting-panel">
+                        <h4>Place Bet</h4>
+                        
+                        <div class="direction-buttons">
+                            <button class="btn-direction higher" data-asset="BTC" data-direction="HIGHER">
+                                \uD83D\uDCC8 HIGHER
+                            </button>
+                            <button class="btn-direction lower" data-asset="BTC" data-direction="LOWER">
+                                \uD83D\uDCC9 LOWER
+                            </button>
+                        </div>
+
+                        <div class="timeframe-buttons">
+                            <button class="btn-timeframe" data-duration="60">1 Minute</button>
+                            <button class="btn-timeframe active" data-duration="900">15 Minutes</button>
+                        </div>
+
+                        <div class="amount-input-group">
+                            <label>Bet Amount (BB)</label>
+                            <input type="number" id="btcBetAmount" class="amount-input" placeholder="10" min="1" value="10">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Solana Card -->
+                <div class="price-card">
+                    <div class="price-header">
+                        <h3>◎ Solana</h3>
+                        <div class="current-price">
+                            <span class="price-label">Current Price</span>
+                            <span class="price-value" id="solCurrentPrice">$0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="betting-panel">
+                        <h4>Place Bet</h4>
+                        
+                        <div class="direction-buttons">
+                            <button class="btn-direction higher" data-asset="SOL" data-direction="HIGHER">
+                                \uD83D\uDCC8 HIGHER
+                            </button>
+                            <button class="btn-direction lower" data-asset="SOL" data-direction="LOWER">
+                                \uD83D\uDCC9 LOWER
+                            </button>
+                        </div>
+
+                        <div class="timeframe-buttons">
+                            <button class="btn-timeframe" data-duration="60">1 Minute</button>
+                            <button class="btn-timeframe active" data-duration="900">15 Minutes</button>
+                        </div>
+
+                        <div class="amount-input-group">
+                            <label>Bet Amount (BB)</label>
+                            <input type="number" id="solBetAmount" class="amount-input" placeholder="10" min="1" value="10">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="active-bets-section">
+                <h3>\uD83C\uDFAF Active Bets</h3>
+                <div id="activePriceBets" class="active-bets-grid">
+                    <p class="empty-state">No active price bets</p>
+                </div>
+            </div>
+        `;
+    this.setupEventListeners(container);
+    return container;
+  }
+  setupEventListeners(container) {
+    container.querySelectorAll(".btn-timeframe").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const target = e.target;
+        const card = target.closest(".price-card");
+        if (!card)
+          return;
+        card.querySelectorAll(".btn-timeframe").forEach((b) => b.classList.remove("active"));
+        target.classList.add("active");
+      });
+    });
+    container.querySelectorAll(".btn-direction").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const target = e.target;
+        const asset = target.dataset.asset;
+        const direction = target.dataset.direction;
+        const card = target.closest(".price-card");
+        if (!card)
+          return;
+        const activeTimeframe = card.querySelector(".btn-timeframe.active");
+        const duration = parseInt(activeTimeframe?.dataset.duration || "900");
+        const amountInput = card.querySelector(".amount-input");
+        const amount = parseFloat(amountInput.value || "10");
+        if (isNaN(amount) || amount <= 0) {
+          debugConsole.log("❌ Invalid bet amount", "error");
+          return;
+        }
+        const selectedAccountEl = document.getElementById("selectedAccountName");
+        const accountName = selectedAccountEl?.textContent;
+        if (!accountName || accountName === "Select Account") {
+          debugConsole.log("❌ Please select an account first", "error");
+          return;
+        }
+        try {
+          await this.placePriceBet(asset, direction, amount, duration, accountName);
+        } catch (error) {
+          debugConsole.log(`❌ Bet failed: ${error}`, "error");
+        }
+      });
+    });
+  }
+}
+var price_action_default = new PriceActionModule;
+
 // src/main.ts
 var selectedAccount = null;
 var accounts = [];
@@ -802,37 +1125,12 @@ async function loadMarkets() {
 }
 async function loadActiveMarketsFromRSS() {
   try {
-    console.log("\uD83D\uDCE1 Fetching event.rss for Active Markets...");
-    const response = await fetch("../../../blackBook/src/event.rss");
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const xmlText = await response.text();
-    console.log("\uD83D\uDCC4 RSS fetched, parsing...");
-    const parser = new DOMParser;
-    const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-    if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
-      throw new Error("Failed to parse RSS XML");
-    }
-    const items = xmlDoc.getElementsByTagName("item");
-    console.log(`✅ Found ${items.length} active markets in RSS`);
-    const rssMarkets = [];
-    for (let i = 0;i < items.length; i++) {
-      const item = items[i];
-      const title = item.getElementsByTagName("title")[0]?.textContent || "Untitled Market";
-      const description = item.getElementsByTagName("description")[0]?.textContent || "";
-      const link = item.getElementsByTagName("link")[0]?.textContent || "#";
-      const confidence = parseFloat(item.getElementsByTagName("confidence")[0]?.textContent || "0");
-      const marketId = item.getElementsByTagName("marketId")[0]?.textContent || "";
-      const options = Array.from(item.getElementsByTagName("option")).map((opt) => opt.textContent || "");
-      rssMarkets.push({
-        title: title.replace(/^✅ ACTIVE MARKET - /, ""),
-        description,
-        link,
-        confidence,
-        marketId,
-        options
-      });
+    console.log("\uD83D\uDCE1 Fetching BlackBook events from RSS...");
+    const rssMarkets = await BackendService.getBlackbookEvents();
+    console.log(`✅ Fetched ${rssMarkets.length} events from RSS`);
+    if (rssMarkets.length === 0) {
+      log("⚠️ No events available", "warning");
+      return;
     }
     renderActiveMarkets(rssMarkets);
     log(`✅ Loaded ${rssMarkets.length} active markets from event.rss`, "success");
@@ -878,67 +1176,65 @@ function renderBlackbookEvents(rssMarkets) {
     console.log("⚠️ blackbookEvents element not found");
     return;
   }
-  if (rssMarkets.length === 0) {
-    eventsContainer.innerHTML = '<p class="empty-state">No active BlackBook events available</p>';
+  const highConfidenceEvents = rssMarkets.filter((market) => market.confidence > 0.5);
+  if (highConfidenceEvents.length === 0) {
+    eventsContainer.innerHTML = '<p class="empty-state">No high-confidence events available (need >50%)</p>';
     return;
   }
-  console.log(`\uD83D\uDCCA Rendering ${rssMarkets.length} BlackBook events with betting`);
-  eventsContainer.innerHTML = rssMarkets.map((market, idx) => `
+  console.log(`\uD83D\uDCCA Rendering ${highConfidenceEvents.length} high-confidence BlackBook events`);
+  eventsContainer.innerHTML = highConfidenceEvents.map((market, idx) => `
         <div class="event-card">
-            <div class="event-header">
-                <div>
-                    <h3>${market.title}</h3>
-                    <p class="event-description">${market.description}</p>
+            <div class="event-card-content">
+                <div class="event-title-section">
+                    <h3 class="event-title">${market.title}</h3>
+                    <span class="event-category">${market.category || "general"}</span>
                 </div>
-                <span class="confidence-score" style="background: hsl(${Math.round(market.confidence * 120)}, 100%, 50%)">
-                    ${(market.confidence * 100).toFixed(0)}%
-                </span>
-            </div>
-            
-            <div class="betting-options">
-                ${market.options.map((option, optIdx) => `
-                    <div class="bet-option">
-                        <button class="bet-btn yes-btn" data-market="${idx}" data-outcome="${optIdx}">
-                            <span class="outcome-text">${option}</span>
-                            <span class="bet-action">Place Bet</span>
-                        </button>
+                
+                <p class="event-description">${market.description}</p>
+                
+                <div class="event-betting-section">
+                    <div class="betting-buttons">
+                        ${market.options.map((option, optIdx) => `
+                            <button class="event-bet-btn" data-market="${idx}" data-outcome="${optIdx}" data-title="${market.title.replace(/"/g, "&quot;")}" data-option="${option.replace(/"/g, "&quot;")}" data-market-id="${market.marketId}">
+                                <span class="bet-option-text">${option}</span>
+                            </button>
+                        `).join("")}
                     </div>
-                `).join("")}
+                </div>
             </div>
             
-            <div class="event-footer">
-                <a href="${market.link}" target="_blank" class="source-link">\uD83D\uDCD6 Source →</a>
-                <span class="market-id" title="${market.marketId}">ID: ${market.marketId.substring(0, 8)}...</span>
+            <div class="event-card-footer">
+                <a href="${market.link}" target="_blank" class="event-source-link" title="Read source article">\uD83D\uDCD6</a>
             </div>
         </div>
     `).join("");
-  setupBlackbookEventListeners(rssMarkets);
+  setupBlackbookEventListeners(highConfidenceEvents);
 }
-function setupBlackbookEventListeners(rssMarkets) {
-  const betButtons = document.querySelectorAll(".bet-btn");
+function setupBlackbookEventListeners(_rssMarkets) {
+  const betButtons = document.querySelectorAll(".event-bet-btn");
   betButtons.forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const marketIdx = e.currentTarget.getAttribute("data-market");
       const outcomeIdx = e.currentTarget.getAttribute("data-outcome");
-      if (!marketIdx || !outcomeIdx) {
+      const marketId = e.currentTarget.getAttribute("data-market-id");
+      const option = e.currentTarget.getAttribute("data-option");
+      if (!marketIdx || !outcomeIdx || !marketId || !option) {
         log("❌ Invalid bet data", "error");
         return;
       }
-      const market = rssMarkets[parseInt(marketIdx)];
-      const outcome = market.options[parseInt(outcomeIdx)];
       if (!selectedAccount) {
         log("❌ Please select an account first", "error");
         return;
       }
-      const amount = prompt(`Enter amount to bet on "${outcome}" (in BB):`);
+      const amount = prompt(`Enter amount to bet on "${option}" (in BB):`);
       if (!amount || isNaN(parseFloat(amount))) {
         log("❌ Invalid bet amount", "error");
         return;
       }
       try {
-        log(`\uD83C\uDFAF Placing bet on "${outcome}" for ${amount} BB...`, "info");
-        await BackendService.placeBet(market.marketId, selectedAccount.name, parseFloat(amount), outcome);
-        log(`✅ Bet placed successfully! ${amount} BB on "${outcome}"`, "success");
+        log(`\uD83C\uDFAF Placing bet on "${option}" for ${amount} BB...`, "info");
+        await BackendService.placeBet(marketId, selectedAccount.name, parseFloat(amount), option);
+        log(`✅ Bet placed successfully! ${amount} BB on "${option}"`, "success");
         await loadAccounts();
       } catch (error) {
         log(`❌ Bet failed: ${error}`, "error");
@@ -963,35 +1259,100 @@ async function loadPolymarketEvents() {
       log("⚠️ Polymarket Events element not found", "warning");
       return;
     }
-    log("\uD83D\uDD2E Fetching Polymarket events...", "info");
+    log("\uD83D\uDD2E Fetching top 20 Polymarket events by volume...", "info");
     const polymarketData = await BackendService.getPolymarketEvents();
-    log(`✅ Loaded ${polymarketData.length} Polymarket events`, "success");
+    log(`\uD83D\uDCE6 Polymarket API returned ${polymarketData.length} events`, "info");
+    if (!Array.isArray(polymarketData)) {
+      const errMsg = `❌ Polymarket API returned non-array: ${typeof polymarketData}`;
+      log(errMsg, "error");
+      console.error("Polymarket data structure:", polymarketData);
+      polyEl.innerHTML = `<p class="loading">${errMsg}</p>`;
+      return;
+    }
+    if (polymarketData.length === 0) {
+      log("⚠️ No active Polymarket events available", "warning");
+      polyEl.innerHTML = '<p class="loading">No active Polymarket events available</p>';
+      return;
+    }
     if (polymarketData.length > 0) {
-      polyEl.innerHTML = polymarketData.map((m) => `
+      const firstEvent = polymarketData[0];
+      log(`\uD83D\uDCCB Sample Polymarket event fields: ${Object.keys(firstEvent).join(", ")}`, "info");
+      console.log("\uD83D\uDCCA First Polymarket event:", firstEvent);
+    }
+    const renderedCards = [];
+    polymarketData.forEach((event, idx) => {
+      try {
+        const eventTitle = event.title || event.question || `Event ${idx}`;
+        const eventDescription = event.description || "";
+        const eventVolume = event.volume24hr || event.volume_24h || event.volume || 0;
+        const markets2 = event.markets || [];
+        if (markets2.length === 0) {
+          log(`⚠️ Event ${idx} "${eventTitle}" has no markets`, "warning");
+          return;
+        }
+        const market = markets2[0];
+        let outcomes = market.outcomes || [];
+        if (typeof outcomes === "string") {
+          try {
+            outcomes = JSON.parse(outcomes);
+          } catch (e) {
+            outcomes = ["Yes", "No"];
+          }
+        }
+        let prices = market.outcomePrices || [];
+        if (typeof prices === "string") {
+          try {
+            prices = JSON.parse(prices);
+          } catch (e) {
+            prices = [0.5, 0.5];
+          }
+        }
+        prices = prices.map((p) => typeof p === "string" ? parseFloat(p) : p);
+        log(`✅ Event ${idx}: "${eventTitle}" - Volume: $${(eventVolume / 1000).toFixed(1)}K`, "success");
+        if (!Array.isArray(prices) || prices.length < 2) {
+          prices = [0.5, 0.5];
+        }
+        if (!Array.isArray(outcomes) || outcomes.length < 2) {
+          outcomes = ["Yes", "No"];
+        }
+        const safePrice0 = Math.min(99, Math.max(1, Math.round((prices[0] || 0.5) * 100)));
+        const safePrice1 = Math.min(99, Math.max(1, Math.round((prices[1] || 0.5) * 100)));
+        renderedCards.push(`
                 <div class="market-card">
-                    <h3>${m.question}</h3>
-                    <p>${m.description || "No description"}</p>
+                    <h3>${eventTitle}</h3>
+                    <p>${eventDescription || "Popular prediction market"}</p>
                     <div class="market-prices">
                         <div class="price-column">
-                            <span class="label">${m.outcomes[0] || "YES"}</span>
-                            <span class="price">${(m.outcome_prices[0] * 100).toFixed(0)}¢</span>
+                            <span class="label">${String(outcomes[0]).substring(0, 20)}</span>
+                            <span class="price">${safePrice0}¢</span>
                         </div>
                         <div class="price-column">
-                            <span class="label">${m.outcomes[1] || "NO"}</span>
-                            <span class="price">${(m.outcome_prices[1] * 100).toFixed(0)}¢</span>
+                            <span class="label">${String(outcomes[1]).substring(0, 20)}</span>
+                            <span class="price">${safePrice1}¢</span>
                         </div>
                     </div>
-                    <div class="market-volume">Vol: ${formatVolume(m.volume_24h || m.volume || 0)}</div>
+                    <div class="market-volume">24h Vol: ${formatVolume(eventVolume)}</div>
                 </div>
-            `).join("");
+            `);
+      } catch (cardError) {
+        log(`❌ Error rendering Polymarket event ${idx}: ${cardError}`, "error");
+        console.error(`Card rendering error for event ${idx}:`, cardError, event);
+      }
+    });
+    if (renderedCards.length > 0) {
+      polyEl.innerHTML = renderedCards.join("");
+      log(`✅ Successfully rendered ${renderedCards.length} top Polymarket events`, "success");
     } else {
-      polyEl.innerHTML = '<p class="loading">No Polymarket events available</p>';
+      polyEl.innerHTML = '<p class="loading">No valid Polymarket events could be rendered</p>';
+      log("❌ All Polymarket events failed to render", "error");
     }
   } catch (error) {
-    log(`⚠️ Polymarket fetch failed: ${error}`, "warning");
+    const errMsg = `❌ Polymarket API Error: ${error instanceof Error ? error.message : String(error)}`;
+    log(errMsg, "error");
+    console.error("Polymarket fetch detailed error:", error);
     const polyEl = document.getElementById("polymarketEvents");
     if (polyEl) {
-      polyEl.innerHTML = `<p class="loading">Error loading Polymarket events: ${error}</p>`;
+      polyEl.innerHTML = `<p class="loading" style="color: #e63946;">${errMsg}</p>`;
     }
   }
 }
@@ -1085,6 +1446,7 @@ function closeAccountsDropdown() {
 function switchPage(page) {
   const mainContainer = document.getElementById("mainContainer");
   const transfersContainer = document.getElementById("transfersContainer");
+  const priceActionContainer = document.getElementById("priceActionContainer");
   if (page === "transfers") {
     log("\uD83D\uDD04 Opening Transfers Page...", "info");
     if (mainContainer)
@@ -1094,12 +1456,24 @@ function switchPage(page) {
       transfers_default.populateTransferSelects();
       transfers_default.updateTransferStats();
     }
+    if (priceActionContainer)
+      priceActionContainer.classList.add("hidden");
+  } else if (page === "priceAction") {
+    log("⚡ Opening Price Action...", "info");
+    if (mainContainer)
+      mainContainer.classList.add("hidden");
+    if (transfersContainer)
+      transfersContainer.classList.add("hidden");
+    if (priceActionContainer)
+      priceActionContainer.classList.remove("hidden");
   } else if (page === "markets") {
     log("\uD83D\uDCCA Returning to Markets...", "info");
     if (mainContainer)
       mainContainer.classList.remove("hidden");
     if (transfersContainer)
       transfersContainer.classList.add("hidden");
+    if (priceActionContainer)
+      priceActionContainer.classList.add("hidden");
   }
 }
 async function init() {
@@ -1119,6 +1493,12 @@ async function init() {
     log("⚡ Initializing BlackBook L1 Desktop App...", "info");
     await loadAccounts();
     transfers_default.initialize(accounts);
+    price_action_default.initialize(accounts);
+    const priceActionContainer = document.createElement("div");
+    priceActionContainer.id = "priceActionContainer";
+    priceActionContainer.className = "page-container hidden";
+    priceActionContainer.appendChild(price_action_default.buildUI());
+    app.appendChild(priceActionContainer);
     await loadMarkets();
     await loadActiveMarketsFromRSS();
     await updatePrices();
@@ -1163,6 +1543,12 @@ function setupEventListeners() {
     transfersBtn.addEventListener("click", () => {
       switchPage("transfers");
       transfers_default.updateTransferStats();
+    });
+  }
+  const priceActionBtn = document.getElementById("priceActionBtn");
+  if (priceActionBtn) {
+    priceActionBtn.addEventListener("click", () => {
+      switchPage("priceAction");
     });
   }
   const homeNavBtn = document.getElementById("homeNavBtn");
