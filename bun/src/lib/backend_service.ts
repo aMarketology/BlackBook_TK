@@ -88,7 +88,10 @@ export class BackendService {
      */
     static async deposit(address: string, amount: number): Promise<string> {
         try {
-            return await invoke('admin_deposit', { address, amount }) as string;
+            // Rust expects a DepositRequest struct as 'req' parameter
+            return await invoke('admin_deposit', { 
+                req: { address, amount }
+            }) as string;
         } catch (error) {
             console.error('❌ Deposit failed:', error);
             throw error;
@@ -100,7 +103,10 @@ export class BackendService {
      */
     static async transfer(from: string, to: string, amount: number): Promise<string> {
         try {
-            return await invoke('transfer', { from, to, amount }) as string;
+            // Rust expects a TransferRequest struct as 'req' parameter
+            return await invoke('transfer', { 
+                req: { from, to, amount }
+            }) as string;
         } catch (error) {
             console.error('❌ Transfer failed:', error);
             throw error;
@@ -131,6 +137,18 @@ export class BackendService {
             return await invoke('get_all_transactions') as Transaction[];
         } catch (error) {
             console.error('❌ Failed to get all transactions:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get all blockchain recipes (comprehensive activity log)
+     */
+    static async getRecipes(): Promise<any[]> {
+        try {
+            return await invoke('get_recipes') as any[];
+        } catch (error) {
+            console.error('❌ Failed to get recipes:', error);
             throw error;
         }
     }
@@ -184,7 +202,9 @@ export class BackendService {
      */
     static async placeBet(marketId: string, account: string, amount: number, prediction: string): Promise<string> {
         try {
-            return await invoke('place_bet', { marketId, account, amount, prediction }) as string;
+            return await invoke('place_bet', { 
+                req: { marketId, account, amount, prediction }
+            }) as string;
         } catch (error) {
             console.error('❌ Bet placement failed:', error);
             throw error;
@@ -196,7 +216,9 @@ export class BackendService {
      */
     static async resolveMarket(marketId: string, winningOption: string): Promise<string> {
         try {
-            return await invoke('resolve_market', { marketId, winningOption }) as string;
+            return await invoke('resolve_market', { 
+                req: { marketId, winningOption }
+            }) as string;
         } catch (error) {
             console.error('❌ Market resolution failed:', error);
             throw error;

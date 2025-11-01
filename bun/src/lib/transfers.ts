@@ -11,6 +11,14 @@ import type { Account } from '../main';
 
 export class TransfersModule {
     private static accounts: Account[] = [];
+    private static onTransferComplete: (() => Promise<void>) | null = null;
+
+    /**
+     * Set a callback to be called after successful transfers
+     */
+    static setOnTransferComplete(callback: () => Promise<void>): void {
+        this.onTransferComplete = callback;
+    }
 
     /**
      * Initialize the transfers module with current accounts
@@ -79,6 +87,27 @@ export class TransfersModule {
         if (amountInput) {
             amountInput.value = amount.toString();
             debugConsole.log(`Quick transfer amount set to ${amount} BB`, 'info');
+        }
+    }
+
+    /**
+     * Refresh account balances after a transfer
+     */
+    static async refreshAccountBalances(): Promise<void> {
+        try {
+            // Fetch updated accounts from backend
+            const updatedAccounts = await BackendService.getAllAccounts();
+            this.accounts = updatedAccounts;
+            
+            // Update the transfer form selects with new balances
+            this.populateTransferSelects();
+            
+            // Update the from balance display if an account is selected
+            this.updateFromBalance();
+            
+            debugConsole.log('✅ Account balances refreshed', 'success');
+        } catch (error) {
+            debugConsole.log(`⚠️ Failed to refresh balances: ${error}`, 'warning');
         }
     }
 
@@ -172,7 +201,14 @@ export class TransfersModule {
                 btn.innerHTML = '<span class="btn-icon">📤</span><span class="btn-text">Send Transfer</span>';
             }
 
-            // Reload accounts and stats
+            // Reload accounts and stats to show updated balances
+            await this.refreshAccountBalances();
+            await this.updateTransferStats();
+            
+            // Call the global callback to update main page
+            if (this.onTransferComplete) {
+                await this.onTransferComplete();
+            }
         } catch (error) {
             debugConsole.log(`❌ Transfer failed: ${error}`, 'error');
             this.showTransferMessage(`❌ Transfer failed: ${error}`, 'error');

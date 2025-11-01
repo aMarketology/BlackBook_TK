@@ -10,6 +10,7 @@ import { formatVolume } from './lib/polymarket';
 import { UIBuilder } from './lib/ui_builder';
 import TransfersModule from './lib/transfers';
 import PriceActionModule from './lib/price_action';
+import type { Recipe } from './lib/tauri';
 
 // ============================================
 // INTERFACES
@@ -37,6 +38,10 @@ interface Market {
 let selectedAccount: Account | null = null;
 let accounts: Account[] = [];
 let markets: Market[] = [];
+
+// Recipe/Ledger State
+let allRecipes: Recipe[] = [];
+let filteredRecipes: Recipe[] = [];
 
 const log = (message: string, type: string = 'info') => debugConsole.log(message, type as any);
 
@@ -380,6 +385,208 @@ async function placeBet(marketId: string, outcome: string, amount: number) {
 }
 
 // ============================================
+// BLOCKCHAIN LEDGER / RECEIPTS
+// ============================================
+
+async function loadReceipts() {
+    try {
+        log('⛓️ Loading blockchain ledger...', 'info');
+        
+        // Fetch all recipes from blockchain
+        const recipes = await BackendService.getRecipes();
+        allRecipes = recipes as Recipe[];
+        filteredRecipes = recipes as Recipe[];
+        
+        log(`✅ Loaded ${recipes.length} recipes from ledger`, 'success');
+        
+        // Update UI
+        updateReceiptsStats();
+        displayRecipes(filteredRecipes);
+        populateReceiptsFilters();
+        
+    } catch (error: any) {
+        log(`❌ Failed to load ledger: ${error.message}`, 'error');
+    }
+}
+
+function updateReceiptsStats() {
+    const totalRecipesEl = document.getElementById('totalRecipes');
+    const totalVolumeEl = document.getElementById('totalVolume');
+    const totalBetsEl = document.getElementById('totalBets');
+    const totalTransfersEl = document.getElementById('totalTransfers');
+    
+    const totalVolume = allRecipes.reduce((sum, recipe) => sum + Math.abs(recipe.amount), 0);
+    const totalBets = allRecipes.filter(r => r.recipe_type === 'bet_placed').length;
+    const totalTransfers = allRecipes.filter(r => r.recipe_type === 'transfer').length;
+    
+    if (totalRecipesEl) totalRecipesEl.textContent = allRecipes.length.toString();
+    if (totalVolumeEl) totalVolumeEl.textContent = `${totalVolume.toFixed(2)} BB`;
+    if (totalBetsEl) totalBetsEl.textContent = totalBets.toString();
+    if (totalTransfersEl) totalTransfersEl.textContent = totalTransfers.toString();
+}
+
+function displayRecipes(recipes: Recipe[]) {
+    const receiptsList = document.getElementById('receiptsList');
+    const visibleCountEl = document.getElementById('visibleCount');
+    const totalCountEl = document.getElementById('totalCount');
+    
+    if (!receiptsList) return;
+    
+    // Update counts
+    if (visibleCountEl) visibleCountEl.textContent = recipes.length.toString();
+    if (totalCountEl) totalCountEl.textContent = allRecipes.length.toString();
+    
+    if (recipes.length === 0) {
+        receiptsList.innerHTML = '<p class="empty-state">No ledger entries found. Try adjusting your filters.</p>';
+        return;
+    }
+    
+    // Sort by timestamp (newest first)
+    const sortedRecipes = [...recipes].sort((a, b) => b.timestamp - a.timestamp);
+    
+    receiptsList.innerHTML = sortedRecipes.map(recipe => {
+        const date = new Date(recipe.timestamp * 1000);
+        const formattedDate = date.toLocaleDateString();
+        const formattedTime = date.toLocaleTimeString();
+        
+        // Get icon and color based on recipe type
+        const typeInfo = getRecipeTypeInfo(recipe.recipe_type);
+        
+        return `
+            <div class="recipe-item" data-recipe-id="${recipe.id}">
+                <div class="recipe-icon ${typeInfo.color}">${typeInfo.icon}</div>
+                <div class="recipe-content">
+                    <div class="recipe-header">
+                        <span class="recipe-type-badge ${recipe.recipe_type}">${typeInfo.label}</span>
+                        <span class="recipe-amount ${recipe.amount >= 0 ? 'positive' : 'negative'}">${recipe.amount >= 0 ? '+' : ''}${recipe.amount.toFixed(2)} BB</span>
+                    </div>
+                    <div class="recipe-description">${recipe.description}</div>
+                    <div class="recipe-meta">
+                        <span class="recipe-account">👤 ${recipe.account}</span>
+                        ${recipe.related_id ? `<span class="recipe-related">🔗 ${recipe.related_id.substring(0, 12)}...</span>` : ''}
+                        <span class="recipe-timestamp">📅 ${formattedDate} ${formattedTime}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function getRecipeTypeInfo(type: string): {icon: string, label: string, color: string} {
+    const typeMap: Record<string, {icon: string, label: string, color: string}> = {
+        'bet_placed': {icon: '🎯', label: 'Bet Placed', color: 'bet'},
+        'bet_win': {icon: '🏆', label: 'Bet Won', color: 'win'},
+        'bet_loss': {icon: '❌', label: 'Bet Lost', color: 'loss'},
+        'market_payout': {icon: '💰', label: 'Payout', color: 'payout'},
+        'transfer': {icon: '🔄', label: 'Transfer', color: 'transfer'},
+        'deposit': {icon: '💵', label: 'Deposit', color: 'deposit'},
+        'admin_action': {icon: '⚙️', label: 'Admin', color: 'admin'},
+    };
+    
+    return typeMap[type] || {icon: '📋', label: type, color: 'default'};
+}
+
+function populateReceiptsFilters() {
+    const filterAccount = document.getElementById('filterAccount') as HTMLSelectElement;
+    if (!filterAccount) return;
+    
+    // Get unique accounts from recipes
+    const accountsSet = new Set<string>();
+    allRecipes.forEach(recipe => accountsSet.add(recipe.account));
+    
+    // Populate dropdown
+    const sortedAccounts = Array.from(accountsSet).sort();
+    filterAccount.innerHTML = '<option value="">All Accounts</option>' + 
+        sortedAccounts.map(account => `<option value="${account}">${account}</option>`).join('');
+}
+
+function applyRecipeFilters() {
+    const filterAccount = (document.getElementById('filterAccount') as HTMLSelectElement)?.value || '';
+    const filterType = (document.getElementById('filterType') as HTMLSelectElement)?.value || '';
+    const searchAmount = (document.getElementById('searchAmount') as HTMLInputElement)?.value;
+    
+    const minAmount = searchAmount ? parseFloat(searchAmount) : 0;
+    
+    filteredRecipes = allRecipes.filter(recipe => {
+        const matchesAccount = !filterAccount || recipe.account === filterAccount;
+        const matchesType = !filterType || recipe.recipe_type === filterType;
+        const matchesAmount = Math.abs(recipe.amount) >= minAmount;
+        
+        return matchesAccount && matchesType && matchesAmount;
+    });
+    
+    displayRecipes(filteredRecipes);
+    log(`🔍 Filtered to ${filteredRecipes.length} ledger entries`, 'info');
+}
+
+function resetRecipeFilters() {
+    const filterAccount = document.getElementById('filterAccount') as HTMLSelectElement;
+    const filterType = document.getElementById('filterType') as HTMLSelectElement;
+    const searchAmount = document.getElementById('searchAmount') as HTMLInputElement;
+    
+    if (filterAccount) filterAccount.value = '';
+    if (filterType) filterType.value = '';
+    if (searchAmount) searchAmount.value = '';
+    
+    filteredRecipes = allRecipes;
+    displayRecipes(filteredRecipes);
+    log('🔄 Filters reset', 'info');
+}
+
+function exportRecipesToCSV() {
+    if (filteredRecipes.length === 0) {
+        log('⚠️ No recipes to export', 'warning');
+        return;
+    }
+    
+    // CSV headers
+    const headers = ['ID', 'Type', 'Account', 'Address', 'Amount', 'Description', 'Related ID', 'Timestamp', 'Date'];
+    
+    // CSV rows
+    const rows = filteredRecipes.map(recipe => {
+        const date = new Date(recipe.timestamp * 1000);
+        return [
+            recipe.id,
+            recipe.recipe_type,
+            recipe.account,
+            recipe.address,
+            recipe.amount.toFixed(2),
+            `"${recipe.description.replace(/"/g, '""')}"`, // Escape quotes
+            recipe.related_id || '',
+            recipe.timestamp,
+            date.toLocaleString()
+        ];
+    });
+    
+    // Combine headers and rows
+    const csvContent = [headers, ...rows]
+        .map(row => row.join(','))
+        .join('\n');
+    
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `blackbook_ledger_${Date.now()}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+        log(`✅ Exported ${filteredRecipes.length} ledger entries to CSV`, 'success');
+}
+
+// ============================================
+// UI RENDERING
+// ============================================
+
+function renderAccounts() {
+}
+
+// ============================================
 // UI RENDERING
 // ============================================
 
@@ -471,154 +678,6 @@ function closeAccountsDropdown() {
 // ============================================
 // INITIALIZATION
 // ============================================
-
-// ============================================
-// RECEIPTS LOGIC
-// ============================================
-
-let allTransactions: Transaction[] = [];
-let filteredTransactions: Transaction[] = [];
-
-async function loadReceipts() {
-    try {
-        log('📜 Loading all transactions...', 'info');
-        
-        // Fetch all transactions from backend
-        const transactions = await BackendService.getAllTransactions();
-        allTransactions = transactions;
-        filteredTransactions = transactions;
-        
-        log(`✅ Loaded ${transactions.length} transactions`, 'success');
-        
-        // Update UI
-        updateReceiptsStats();
-        displayReceipts(filteredTransactions);
-        populateReceiptsFilters();
-        
-    } catch (error: any) {
-        log(`❌ Failed to load receipts: ${error.message}`, 'error');
-    }
-}
-
-function updateReceiptsStats() {
-    const totalTransactionsEl = document.getElementById('totalTransactions');
-    const totalVolumeEl = document.getElementById('totalVolume');
-    const totalBetsEl = document.getElementById('totalBets');
-    const totalTransfersEl = document.getElementById('totalTransfers');
-    
-    const totalVolume = allTransactions.reduce((sum, tx) => sum + tx.amount, 0);
-    const totalBets = allTransactions.filter(tx => tx.type === 'market_bet').length;
-    const totalTransfers = allTransactions.filter(tx => tx.type === 'transfer').length;
-    
-    if (totalTransactionsEl) totalTransactionsEl.textContent = allTransactions.length.toString();
-    if (totalVolumeEl) totalVolumeEl.textContent = `${totalVolume.toFixed(2)} BB`;
-    if (totalBetsEl) totalBetsEl.textContent = totalBets.toString();
-    if (totalTransfersEl) totalTransfersEl.textContent = totalTransfers.toString();
-}
-
-function displayReceipts(transactions: Transaction[]) {
-    const receiptsList = document.getElementById('receiptsList');
-    const visibleCountEl = document.getElementById('visibleCount');
-    const totalCountEl = document.getElementById('totalCount');
-    
-    if (!receiptsList) return;
-    
-    // Update counts
-    if (visibleCountEl) visibleCountEl.textContent = transactions.length.toString();
-    if (totalCountEl) totalCountEl.textContent = allTransactions.length.toString();
-    
-    if (transactions.length === 0) {
-        receiptsList.innerHTML = '<p class="empty-state">No transactions found</p>';
-        return;
-    }
-    
-    // Sort by timestamp (newest first)
-    const sortedTransactions = [...transactions].sort((a, b) => b.timestamp - a.timestamp);
-    
-    receiptsList.innerHTML = sortedTransactions.map(tx => {
-        const date = new Date(tx.timestamp * 1000);
-        const formattedDate = date.toLocaleString();
-        
-        return `
-            <div class="receipt-item">
-                <div class="receipt-header">
-                    <span class="receipt-type ${tx.type}">${tx.type.replace('_', ' ')}</span>
-                    <span class="receipt-amount">${tx.amount.toFixed(2)} BB</span>
-                </div>
-                <div class="receipt-body">
-                    <div class="receipt-field">
-                        <span class="receipt-label">From:</span>
-                        <span class="receipt-value">${tx.from}</span>
-                    </div>
-                    <div class="receipt-field">
-                        <span class="receipt-label">To:</span>
-                        <span class="receipt-value">${tx.to}</span>
-                    </div>
-                </div>
-                <div class="receipt-timestamp">📅 ${formattedDate}</div>
-            </div>
-        `;
-    }).join('');
-}
-
-function populateReceiptsFilters() {
-    const filterAccount = document.getElementById('filterAccount') as HTMLSelectElement;
-    if (!filterAccount) return;
-    
-    // Get unique accounts from transactions
-    const accounts = new Set<string>();
-    allTransactions.forEach(tx => {
-        accounts.add(tx.from);
-        accounts.add(tx.to);
-    });
-    
-    // Populate dropdown
-    const sortedAccounts = Array.from(accounts).sort();
-    filterAccount.innerHTML = '<option value="">All Accounts</option>' + 
-        sortedAccounts.map(account => `<option value="${account}">${account}</option>`).join('');
-    
-    // Add filter event listeners
-    setupFilterListeners();
-}
-
-function setupFilterListeners() {
-    const applyFiltersBtn = document.getElementById('applyFiltersBtn');
-    const resetFiltersBtn = document.getElementById('resetFiltersBtn');
-    const filterAccount = document.getElementById('filterAccount') as HTMLSelectElement;
-    const filterType = document.getElementById('filterType') as HTMLSelectElement;
-    const searchAmount = document.getElementById('searchAmount') as HTMLInputElement;
-    
-    if (applyFiltersBtn) {
-        applyFiltersBtn.addEventListener('click', () => {
-            const account = filterAccount?.value || '';
-            const type = filterType?.value || '';
-            const minAmount = searchAmount?.value ? parseFloat(searchAmount.value) : 0;
-            
-            filteredTransactions = allTransactions.filter(tx => {
-                const matchesAccount = !account || tx.from === account || tx.to === account;
-                const matchesType = !type || tx.type === type;
-                const matchesAmount = tx.amount >= minAmount;
-                return matchesAccount && matchesType && matchesAmount;
-            });
-            
-            displayReceipts(filteredTransactions);
-            log(`🔍 Filtered to ${filteredTransactions.length} transactions`, 'info');
-        });
-    }
-    
-    if (resetFiltersBtn) {
-        resetFiltersBtn.addEventListener('click', () => {
-            if (filterAccount) filterAccount.value = '';
-            if (filterType) filterType.value = '';
-            if (searchAmount) searchAmount.value = '';
-            filteredTransactions = allTransactions;
-            displayReceipts(filteredTransactions);
-            log('🔄 Filters reset', 'info');
-        });
-    }
-}
-
-// ============================================
 // PAGE SWITCHING
 // ============================================
 
@@ -694,6 +753,12 @@ async function init() {
         
         // Initialize transfers module with loaded accounts
         TransfersModule.initialize(accounts);
+        
+        // Set up callback to refresh main page accounts after transfers
+        TransfersModule.setOnTransferComplete(async () => {
+            await loadAccounts();
+            log('✅ Balances updated after transfer', 'success');
+        });
         
         // Initialize price action module
         PriceActionModule.initialize(accounts);
@@ -809,6 +874,22 @@ function setupEventListeners() {
             switchPage('receipts');
             debugConsole.log('📜 Opening receipts page', 'info');
         });
+    }
+
+    // Receipts filter buttons
+    const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+    if (applyFiltersBtn) {
+        applyFiltersBtn.addEventListener('click', applyRecipeFilters);
+    }
+
+    const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+    if (resetFiltersBtn) {
+        resetFiltersBtn.addEventListener('click', resetRecipeFilters);
+    }
+
+    const exportCSVBtn = document.getElementById('exportCSVBtn');
+    if (exportCSVBtn) {
+        exportCSVBtn.addEventListener('click', exportRecipesToCSV);
     }
     
     // TransfersModule handles all transfer form event listeners
