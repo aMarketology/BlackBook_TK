@@ -673,10 +673,23 @@ static buildMainContent(): HTMLElement {
      * Update prices display
      */
     static updatePrices(btc: number, sol: number): void {
+        // Update header prices
         const btcEl = document.getElementById('btcPrice');
         const solEl = document.getElementById('solPrice');
         
         if (btcEl) btcEl.textContent = `$${btc.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
         if (solEl) solEl.textContent = `$${sol.toFixed(2)}`;
+
+        // Update Price Action page prices
+        const btcPriceActionEl = document.getElementById('btcPriceAction');
+        const solPriceActionEl = document.getElementById('solPriceAction');
+
+        if (btcPriceActionEl) {
+            btcPriceActionEl.textContent = `$${btc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        if (solPriceActionEl) {
+            solPriceActionEl.textContent = `$${sol.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
     }
 }

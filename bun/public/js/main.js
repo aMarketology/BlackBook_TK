@@ -890,6 +890,14 @@ class UIBuilder {
       btcEl.textContent = `$${btc.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
     if (solEl)
       solEl.textContent = `$${sol.toFixed(2)}`;
+    const btcPriceActionEl = document.getElementById("btcPriceAction");
+    const solPriceActionEl = document.getElementById("solPriceAction");
+    if (btcPriceActionEl) {
+      btcPriceActionEl.textContent = `$${btc.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    if (solPriceActionEl) {
+      solPriceActionEl.textContent = `$${sol.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
   }
 }
 
@@ -1090,14 +1098,23 @@ class PriceActionModule {
     }
   }
   updatePriceDisplay() {
-    const btcPriceEl = document.getElementById("btcCurrentPrice");
-    const solPriceEl = document.getElementById("solCurrentPrice");
+    const btcPriceEl = document.getElementById("btcPriceAction");
+    const solPriceEl = document.getElementById("solPriceAction");
     if (btcPriceEl) {
       btcPriceEl.textContent = `$${this.currentPrices.btc.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
     if (solPriceEl) {
       solPriceEl.textContent = `$${this.currentPrices.sol.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
+    const btcHeaderEl = document.getElementById("btcPrice");
+    const solHeaderEl = document.getElementById("solPrice");
+    if (btcHeaderEl) {
+      btcHeaderEl.textContent = `$${this.currentPrices.btc.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    if (solHeaderEl) {
+      solHeaderEl.textContent = `$${this.currentPrices.sol.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    console.log(`\uD83D\uDCCA Updated price display - BTC: $${this.currentPrices.btc}, SOL: $${this.currentPrices.sol}`);
   }
   async placePriceBet(asset, direction, amount, duration, account) {
     const betId = `price_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

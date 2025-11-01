@@ -53,8 +53,9 @@ class PriceActionModule {
     }
 
     private updatePriceDisplay() {
-        const btcPriceEl = document.getElementById('btcCurrentPrice');
-        const solPriceEl = document.getElementById('solCurrentPrice');
+        // Update Price Action page prices
+        const btcPriceEl = document.getElementById('btcPriceAction');
+        const solPriceEl = document.getElementById('solPriceAction');
 
         if (btcPriceEl) {
             btcPriceEl.textContent = `$${this.currentPrices.btc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -63,6 +64,20 @@ class PriceActionModule {
         if (solPriceEl) {
             solPriceEl.textContent = `$${this.currentPrices.sol.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         }
+
+        // Also update header prices (if on Price Action page)
+        const btcHeaderEl = document.getElementById('btcPrice');
+        const solHeaderEl = document.getElementById('solPrice');
+
+        if (btcHeaderEl) {
+            btcHeaderEl.textContent = `$${this.currentPrices.btc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        if (solHeaderEl) {
+            solHeaderEl.textContent = `$${this.currentPrices.sol.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        console.log(`📊 Updated price display - BTC: $${this.currentPrices.btc}, SOL: $${this.currentPrices.sol}`);
     }
 
     async placePriceBet(
