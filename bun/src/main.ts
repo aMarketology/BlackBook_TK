@@ -1,6 +1,23 @@
 /**
- * BlackBook L1 Desktop App - Simplifieasync function loadAccounts() {
+ * BlackBook L1 Desktop App - Simplifieasync function lasync function loadAccounts() {
     try {
+        log('🔗 Connecting to BlackBook L1...', 'info');
+        accounts = await BackendService.getAllAccounts();
+        
+        if (accounts.length === 8) {
+            log('✅ Blockchain Connection: YES', 'success');
+            log('✅ 8 Accounts Loaded: YES', 'success');
+        } else {
+            log(`⚠️ Found ${accounts.length} accounts (expected 8)`, 'warning');
+        }
+        
+        renderAccounts();
+        
+        // Refresh transfers module with updated accounts
+        TransfersModule.refresh(accounts);
+    } catch (error) {
+        log(`❌ Failed to connect to blockchain: ${error}`, 'error');
+    }    try {
         log('🔗 Connecting to BlackBook L1...', 'info');
         accounts = await BackendService.getAllAccounts();
         
@@ -22,6 +39,7 @@ import { BackendService } from './lib/backend_service';
 import { debugConsole } from './lib/debug_console';
 import { formatVolume } from './lib/polymarket';
 import { UIBuilder } from './lib/ui_builder';
+import TransfersModule from './lib/transfers';
 
 // ============================================
 // INTERFACES
@@ -251,192 +269,32 @@ function closeAccountsDropdown() {
 // ============================================
 
 // ============================================
-// PAGE SWITCHING & TRANSFERS
+// PAGE SWITCHING
 // ============================================
 
 function switchPage(page: string) {
-    const mainContent = document.querySelector('.main-content') as HTMLElement;
-    const transfersPage = document.getElementById('transfersPage') as HTMLElement;
+    const mainContainer = document.getElementById('mainContainer') as HTMLElement;
+    const transfersContainer = document.getElementById('transfersContainer') as HTMLElement;
     
     if (page === 'transfers') {
         log('🔄 Opening Transfers Page...', 'info');
-        if (mainContent) mainContent.classList.add('hidden');
-        if (transfersPage) {
-            transfersPage.classList.remove('hidden');
-            populateTransferSelects();
+        if (mainContainer) mainContainer.classList.add('hidden');
+        if (transfersContainer) {
+            transfersContainer.classList.remove('hidden');
+            // Initialize transfers module when switching to transfers page
+            TransfersModule.populateTransferSelects();
+            TransfersModule.updateTransferStats();
         }
     } else if (page === 'markets') {
         log('📊 Returning to Markets...', 'info');
-        if (mainContent) mainContent.classList.remove('hidden');
-        if (transfersPage) transfersPage.classList.add('hidden');
+        if (mainContainer) mainContainer.classList.remove('hidden');
+        if (transfersContainer) transfersContainer.classList.add('hidden');
     }
 }
 
-function populateTransferSelects() {
-    const fromSelect = document.getElementById('transferFrom') as HTMLSelectElement;
-    const toSelect = document.getElementById('transferTo') as HTMLSelectElement;
-    
-    if (!fromSelect || !toSelect) return;
-    
-    fromSelect.innerHTML = '<option value="">Select sender...</option>';
-    toSelect.innerHTML = '<option value="">Select recipient...</option>';
-    
-    accounts.forEach(account => {
-        const fromOption = document.createElement('option');
-        fromOption.value = account.name;
-        fromOption.textContent = `${account.name} (${account.balance} BB)`;
-        fromSelect.appendChild(fromOption);
-        
-        const toOption = document.createElement('option');
-        toOption.value = account.name;
-        toOption.textContent = account.name;
-        toSelect.appendChild(toOption);
-    });
-}
-
-function updateFromBalance() {
-    const fromSelect = document.getElementById('transferFrom') as HTMLSelectElement;
-    const balanceDisplay = document.getElementById('fromBalance') as HTMLElement;
-    const maxAvailable = document.getElementById('maxAvailable') as HTMLElement;
-    
-    if (!fromSelect || !balanceDisplay) return;
-    
-    const account = accounts.find(a => a.name === fromSelect.value);
-    if (account) {
-        balanceDisplay.textContent = account.balance.toString();
-        if (maxAvailable) {
-            maxAvailable.textContent = account.balance.toString();
-        }
-    } else {
-        balanceDisplay.textContent = '0';
-        if (maxAvailable) {
-            maxAvailable.textContent = '0';
-        }
-    }
-}
-
-function showTransferMessage(message: string, type: 'success' | 'error' | 'info') {
-    const messageEl = document.getElementById('transferMessage');
-    if (!messageEl) return;
-    
-    messageEl.textContent = message;
-    messageEl.className = `transfer-message show ${type}`;
-    
-    // Auto-clear success messages after 4 seconds
-    if (type === 'success') {
-        setTimeout(() => {
-            messageEl.classList.remove('show');
-        }, 4000);
-    }
-}
-
-function setQuickTransferAmount(amount: number) {
-    const fromSelect = document.getElementById('transferFrom') as HTMLSelectElement;
-    const amountInput = document.getElementById('transferAmount') as HTMLInputElement;
-    
-    if (!fromSelect.value) {
-        showTransferMessage('❌ Please select a sender account first', 'error');
-        return;
-    }
-    
-    const account = accounts.find(a => a.name === fromSelect.value);
-    if (account && account.balance >= amount) {
-        amountInput.value = amount.toString();
-        showTransferMessage(`📝 Set transfer amount to ${amount} BB`, 'info');
-    } else {
-        showTransferMessage(`❌ Insufficient balance. Available: ${account?.balance || 0} BB`, 'error');
-    }
-}
-
-async function executeTransfer() {
-    try {
-        const fromSelect = document.getElementById('transferFrom') as HTMLSelectElement;
-        const toSelect = document.getElementById('transferTo') as HTMLSelectElement;
-        const amountInput = document.getElementById('transferAmount') as HTMLInputElement;
-        const btn = document.getElementById('sendTransferBtn') as HTMLButtonElement;
-        
-        const fromAccount = fromSelect.value;
-        const toAccount = toSelect.value;
-        const amount = parseFloat(amountInput.value);
-        
-        if (!fromAccount || !toAccount || !amount || amount <= 0) {
-            showTransferMessage('❌ Please fill in all transfer fields', 'error');
-            log('❌ Please fill in all transfer fields', 'error');
-            return;
-        }
-        
-        if (fromAccount === toAccount) {
-            showTransferMessage('❌ Cannot transfer to the same account', 'error');
-            log('❌ Cannot transfer to the same account', 'error');
-            return;
-        }
-        
-        const fromAccountObj = accounts.find(a => a.name === fromAccount);
-        if (!fromAccountObj || fromAccountObj.balance < amount) {
-            showTransferMessage(`❌ Insufficient balance. Available: ${fromAccountObj?.balance || 0} BB`, 'error');
-            log('❌ Insufficient balance', 'error');
-            return;
-        }
-        
-        // Disable button and show loading state
-        btn.disabled = true;
-        btn.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">Processing...</span>';
-        
-        log(`🔄 Transferring ${amount} BB from ${fromAccount} to ${toAccount}...`, 'info');
-        showTransferMessage(`⏳ Processing transfer of ${amount} BB...`, 'info');
-        
-        await BackendService.transfer(fromAccount, toAccount, amount);
-        
-        log(`✅ Transfer successful!`, 'success');
-        showTransferMessage(`✅ Successfully transferred ${amount} BB from ${fromAccount} to ${toAccount}!`, 'success');
-        
-        // Reset form
-        amountInput.value = '';
-        fromSelect.value = '';
-        toSelect.value = '';
-        
-        const balanceDisplay = document.getElementById('fromBalance') as HTMLElement;
-        if (balanceDisplay) {
-            balanceDisplay.textContent = '0';
-        }
-        
-        // Re-enable button
-        btn.disabled = false;
-        btn.innerHTML = '<span class="btn-icon">📤</span><span class="btn-text">Send Transfer</span>';
-        
-        // Reload accounts to update balances
-        await loadAccounts();
-        await updateTransferStats();
-        
-    } catch (error) {
-        log(`❌ Transfer failed: ${error}`, 'error');
-        showTransferMessage(`❌ Transfer failed: ${error}`, 'error');
-        
-        const btn = document.getElementById('sendTransferBtn') as HTMLButtonElement;
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<span class="btn-icon">📤</span><span class="btn-text">Send Transfer</span>';
-        }
-    }
-}
-
-async function updateTransferStats() {
-    try {
-        const stats = await BackendService.getLedgerStats();
-        
-        const statsAccounts = document.getElementById('statsAccounts');
-        const statsVolume = document.getElementById('statsVolume');
-        const statsTransfers = document.getElementById('statsTransfers');
-        const statsBets = document.getElementById('statsBets');
-        
-        if (statsAccounts) statsAccounts.textContent = stats.totalAccounts.toString();
-        if (statsVolume) statsVolume.textContent = `${stats.totalVolume.toFixed(0)} BB`;
-        if (statsTransfers) statsTransfers.textContent = stats.totalTransactions.toString();
-        if (statsBets) statsBets.textContent = stats.totalBets.toString();
-    } catch (error) {
-        console.error('Failed to update transfer stats:', error);
-    }
-}
+// ============================================
+// INITIALIZATION
+// ============================================
 
 async function init() {
     console.log('🚀 Starting app initialization...');
@@ -463,6 +321,10 @@ async function init() {
         
         // Load data
         await loadAccounts();
+        
+        // Initialize transfers module with loaded accounts
+        TransfersModule.initialize(accounts);
+        
         await loadMarkets();
         
         // Fetch real market prices and Polymarket data
@@ -480,6 +342,24 @@ async function init() {
 }
 
 function setupEventListeners() {
+    // Home button - click title to return to home
+    const homeBtn = document.getElementById('homeBtn');
+    if (homeBtn) {
+        homeBtn.addEventListener('click', () => {
+            switchPage('markets');
+            debugConsole.log('🏠 Returning to home page', 'info');
+        });
+    }
+    
+    // Blockchain button - click to return to home
+    const blockchainBtn = document.getElementById('blockchainBtn');
+    if (blockchainBtn) {
+        blockchainBtn.addEventListener('click', () => {
+            switchPage('markets');
+            debugConsole.log('🏠 Returning to home page', 'info');
+        });
+    }
+    
     // Accounts dropdown
     const toggle = document.getElementById('accountsToggle');
     if (toggle) {
@@ -502,7 +382,16 @@ function setupEventListeners() {
     if (transfersBtn) {
         transfersBtn.addEventListener('click', () => {
             switchPage('transfers');
-            updateTransferStats();
+            TransfersModule.updateTransferStats();
+        });
+    }
+    
+    // Home button - return to home/markets page
+    const homeNavBtn = document.getElementById('homeNavBtn');
+    if (homeNavBtn) {
+        homeNavBtn.addEventListener('click', () => {
+            switchPage('markets');
+            debugConsole.log('🏠 Returning to home page', 'info');
         });
     }
     
@@ -512,32 +401,7 @@ function setupEventListeners() {
         backBtn.addEventListener('click', () => switchPage('markets'));
     }
     
-    // Transfer form
-    const fromSelect = document.getElementById('transferFrom') as HTMLSelectElement;
-    if (fromSelect) {
-        fromSelect.addEventListener('change', updateFromBalance);
-    }
-    
-    const sendBtn = document.getElementById('sendTransferBtn');
-    if (sendBtn) {
-        sendBtn.addEventListener('click', executeTransfer);
-    }
-    
-    // Quick transfer buttons
-    const quickTransfer50 = document.getElementById('quickTransfer50');
-    if (quickTransfer50) {
-        quickTransfer50.addEventListener('click', () => setQuickTransferAmount(50));
-    }
-    
-    const quickTransfer100 = document.getElementById('quickTransfer100');
-    if (quickTransfer100) {
-        quickTransfer100.addEventListener('click', () => setQuickTransferAmount(100));
-    }
-    
-    const quickTransfer500 = document.getElementById('quickTransfer500');
-    if (quickTransfer500) {
-        quickTransfer500.addEventListener('click', () => setQuickTransferAmount(500));
-    }
+    // TransfersModule handles all transfer form event listeners
     
     // Close dropdown when clicking outside
     document.addEventListener('click', (e: any) => {
@@ -556,7 +420,3 @@ document.addEventListener('DOMContentLoaded', init);
 (window as any).placeBet = placeBet;
 (window as any).toggleAccountsDropdown = toggleAccountsDropdown;
 (window as any).switchPage = switchPage;
-(window as any).updateFromBalance = updateFromBalance;
-(window as any).executeTransfer = executeTransfer;
-(window as any).setQuickTransferAmount = setQuickTransferAmount;
-(window as any).updateTransferStats = updateTransferStats;

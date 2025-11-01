@@ -312,16 +312,41 @@ class UIBuilder {
     const headerLeft = document.createElement("div");
     headerLeft.className = "header-left";
     const title = document.createElement("h1");
+    title.id = "homeBtn";
     title.textContent = "\uD83C\uDFAF BlackBook L1 Prediction Market";
+    title.style.cursor = "pointer";
+    title.title = "Click to return to home";
     headerLeft.appendChild(title);
     const networkInfo = document.createElement("div");
     networkInfo.className = "network-info";
-    networkInfo.innerHTML = `
-            <span class="badge">\uD83D\uDD17 Layer 1 Blockchain</span>
-            <span class="badge">\uD83D\uDC8E BB Token</span>
-            <span class="badge">\uD83D\uDCCA 8 Accounts</span>
-            <button class="badge badge-button" id="transfersBtn">\uD83D\uDD04 Transfers</button>
-        `;
+    const blockchainBadge = document.createElement("button");
+    blockchainBadge.className = "badge badge-button";
+    blockchainBadge.id = "blockchainBtn";
+    blockchainBadge.textContent = "\uD83D\uDD17 Layer 1 Blockchain";
+    blockchainBadge.title = "Click to return to home";
+    blockchainBadge.style.background = "none";
+    blockchainBadge.style.border = "none";
+    blockchainBadge.style.cursor = "pointer";
+    blockchainBadge.style.padding = "0";
+    networkInfo.appendChild(blockchainBadge);
+    const tokenBadge = document.createElement("span");
+    tokenBadge.className = "badge";
+    tokenBadge.textContent = "\uD83D\uDC8E BB Token";
+    networkInfo.appendChild(tokenBadge);
+    const accountsBadge = document.createElement("span");
+    accountsBadge.className = "badge";
+    accountsBadge.textContent = "\uD83D\uDCCA 8 Accounts";
+    networkInfo.appendChild(accountsBadge);
+    const homeNavBtn = document.createElement("button");
+    homeNavBtn.className = "badge badge-button";
+    homeNavBtn.id = "homeNavBtn";
+    homeNavBtn.textContent = "\uD83C\uDFE0 Home";
+    networkInfo.appendChild(homeNavBtn);
+    const transfersBtn = document.createElement("button");
+    transfersBtn.className = "badge badge-button";
+    transfersBtn.id = "transfersBtn";
+    transfersBtn.textContent = "\uD83D\uDD04 Transfers";
+    networkInfo.appendChild(transfersBtn);
     headerLeft.appendChild(networkInfo);
     const headerRight = document.createElement("div");
     headerRight.className = "header-right";
@@ -560,6 +585,176 @@ class UIBuilder {
   }
 }
 
+// src/lib/transfers.ts
+class TransfersModule {
+  static accounts = [];
+  static setAccounts(accounts) {
+    this.accounts = accounts;
+  }
+  static getAccounts() {
+    return this.accounts;
+  }
+  static populateTransferSelects() {
+    const fromSelect = document.getElementById("transferFrom");
+    const toSelect = document.getElementById("transferTo");
+    if (!fromSelect || !toSelect)
+      return;
+    const options = this.accounts.map((account) => `<option value="${account.name}">${account.name} (${account.balance} BB)</option>`).join("");
+    fromSelect.innerHTML = '<option value="">Select sender...</option>' + options;
+    toSelect.innerHTML = '<option value="">Select recipient...</option>' + options;
+  }
+  static updateFromBalance() {
+    const fromSelect = document.getElementById("transferFrom");
+    const fromBalance = document.getElementById("fromBalance");
+    const maxAvailable = document.getElementById("maxAvailable");
+    if (!fromSelect || !fromBalance || !maxAvailable)
+      return;
+    const selectedAccountName = fromSelect.value;
+    const selectedAccount = this.accounts.find((a) => a.name === selectedAccountName);
+    if (selectedAccount) {
+      fromBalance.textContent = selectedAccount.balance.toString();
+      maxAvailable.textContent = selectedAccount.balance.toString();
+      debugConsole.log(`Selected from account: ${selectedAccount.name} (${selectedAccount.balance} BB)`, "info");
+    } else {
+      fromBalance.textContent = "0";
+      maxAvailable.textContent = "0";
+    }
+  }
+  static setQuickTransferAmount(amount) {
+    const amountInput = document.getElementById("transferAmount");
+    if (amountInput) {
+      amountInput.value = amount.toString();
+      debugConsole.log(`Quick transfer amount set to ${amount} BB`, "info");
+    }
+  }
+  static showTransferMessage(message, type = "info") {
+    const messageDiv = document.getElementById("transferMessage");
+    if (!messageDiv)
+      return;
+    messageDiv.textContent = message;
+    messageDiv.className = `transfer-message transfer-message-${type}`;
+    messageDiv.style.display = "block";
+    if (type === "success") {
+      setTimeout(() => {
+        messageDiv.style.display = "none";
+      }, 5000);
+    }
+  }
+  static async executeTransfer() {
+    try {
+      const fromSelect = document.getElementById("transferFrom");
+      const toSelect = document.getElementById("transferTo");
+      const amountInput = document.getElementById("transferAmount");
+      const btn = document.getElementById("sendTransferBtn");
+      const fromAccount = fromSelect?.value;
+      const toAccount = toSelect?.value;
+      const amount = parseFloat(amountInput?.value || "0");
+      if (!fromAccount || !toAccount || !amount || amount <= 0) {
+        this.showTransferMessage("❌ Please fill in all transfer fields", "error");
+        debugConsole.log("❌ Please fill in all transfer fields", "error");
+        return;
+      }
+      if (fromAccount === toAccount) {
+        this.showTransferMessage("❌ Cannot transfer to the same account", "error");
+        debugConsole.log("❌ Cannot transfer to the same account", "error");
+        return;
+      }
+      const fromAccountObj = this.accounts.find((a) => a.name === fromAccount);
+      if (!fromAccountObj || fromAccountObj.balance < amount) {
+        this.showTransferMessage(`❌ Insufficient balance. Available: ${fromAccountObj?.balance || 0} BB`, "error");
+        debugConsole.log("❌ Insufficient balance", "error");
+        return;
+      }
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">Processing...</span>';
+      }
+      debugConsole.log(`\uD83D\uDD04 Transferring ${amount} BB from ${fromAccount} to ${toAccount}...`, "info");
+      this.showTransferMessage(`⏳ Processing transfer of ${amount} BB...`, "info");
+      await BackendService.transfer(fromAccount, toAccount, amount);
+      debugConsole.log(`✅ Transfer successful!`, "success");
+      this.showTransferMessage(`✅ Successfully transferred ${amount} BB from ${fromAccount} to ${toAccount}!`, "success");
+      if (amountInput)
+        amountInput.value = "";
+      if (fromSelect)
+        fromSelect.value = "";
+      if (toSelect)
+        toSelect.value = "";
+      const fromBalance = document.getElementById("fromBalance");
+      if (fromBalance) {
+        fromBalance.textContent = "0";
+      }
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="btn-icon">\uD83D\uDCE4</span><span class="btn-text">Send Transfer</span>';
+      }
+    } catch (error) {
+      debugConsole.log(`❌ Transfer failed: ${error}`, "error");
+      this.showTransferMessage(`❌ Transfer failed: ${error}`, "error");
+      const btn = document.getElementById("sendTransferBtn");
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="btn-icon">\uD83D\uDCE4</span><span class="btn-text">Send Transfer</span>';
+      }
+    }
+  }
+  static async updateTransferStats() {
+    try {
+      const stats = await BackendService.getLedgerStats();
+      const statsAccounts = document.getElementById("statsAccounts");
+      const statsVolume = document.getElementById("statsVolume");
+      const statsTransfers = document.getElementById("statsTransfers");
+      const statsBets = document.getElementById("statsBets");
+      if (statsAccounts)
+        statsAccounts.textContent = stats.totalAccounts?.toString() || "0";
+      if (statsVolume)
+        statsVolume.textContent = `${stats.totalVolume?.toString() || "0"} BB`;
+      if (statsTransfers)
+        statsTransfers.textContent = stats.totalTransactions?.toString() || "0";
+      if (statsBets)
+        statsBets.textContent = stats.totalBets?.toString() || "0";
+      debugConsole.log("\uD83D\uDCCA Transfer statistics updated", "info");
+    } catch (error) {
+      debugConsole.log(`⚠️ Failed to update transfer stats: ${error}`, "warning");
+    }
+  }
+  static setupEventListeners() {
+    const fromSelect = document.getElementById("transferFrom");
+    if (fromSelect) {
+      fromSelect.addEventListener("change", () => this.updateFromBalance());
+    }
+    const sendBtn = document.getElementById("sendTransferBtn");
+    if (sendBtn) {
+      sendBtn.addEventListener("click", () => this.executeTransfer());
+    }
+    const quickTransfer50 = document.getElementById("quickTransfer50");
+    if (quickTransfer50) {
+      quickTransfer50.addEventListener("click", () => this.setQuickTransferAmount(50));
+    }
+    const quickTransfer100 = document.getElementById("quickTransfer100");
+    if (quickTransfer100) {
+      quickTransfer100.addEventListener("click", () => this.setQuickTransferAmount(100));
+    }
+    const quickTransfer500 = document.getElementById("quickTransfer500");
+    if (quickTransfer500) {
+      quickTransfer500.addEventListener("click", () => this.setQuickTransferAmount(500));
+    }
+  }
+  static initialize(accounts) {
+    this.setAccounts(accounts);
+    this.populateTransferSelects();
+    this.setupEventListeners();
+    debugConsole.log("✅ Transfers module initialized", "success");
+  }
+  static refresh(accounts) {
+    this.setAccounts(accounts);
+    this.populateTransferSelects();
+    this.updateFromBalance();
+    this.updateTransferStats();
+  }
+}
+var transfers_default = TransfersModule;
+
 // src/main.ts
 var selectedAccount = null;
 var accounts = [];
@@ -726,158 +921,23 @@ function closeAccountsDropdown() {
   }
 }
 function switchPage(page) {
-  const mainContent = document.querySelector(".main-content");
-  const transfersPage = document.getElementById("transfersPage");
+  const mainContainer = document.getElementById("mainContainer");
+  const transfersContainer = document.getElementById("transfersContainer");
   if (page === "transfers") {
     log("\uD83D\uDD04 Opening Transfers Page...", "info");
-    if (mainContent)
-      mainContent.classList.add("hidden");
-    if (transfersPage) {
-      transfersPage.classList.remove("hidden");
-      populateTransferSelects();
+    if (mainContainer)
+      mainContainer.classList.add("hidden");
+    if (transfersContainer) {
+      transfersContainer.classList.remove("hidden");
+      transfers_default.populateTransferSelects();
+      transfers_default.updateTransferStats();
     }
   } else if (page === "markets") {
     log("\uD83D\uDCCA Returning to Markets...", "info");
-    if (mainContent)
-      mainContent.classList.remove("hidden");
-    if (transfersPage)
-      transfersPage.classList.add("hidden");
-  }
-}
-function populateTransferSelects() {
-  const fromSelect = document.getElementById("transferFrom");
-  const toSelect = document.getElementById("transferTo");
-  if (!fromSelect || !toSelect)
-    return;
-  fromSelect.innerHTML = '<option value="">Select sender...</option>';
-  toSelect.innerHTML = '<option value="">Select recipient...</option>';
-  accounts.forEach((account) => {
-    const fromOption = document.createElement("option");
-    fromOption.value = account.name;
-    fromOption.textContent = `${account.name} (${account.balance} BB)`;
-    fromSelect.appendChild(fromOption);
-    const toOption = document.createElement("option");
-    toOption.value = account.name;
-    toOption.textContent = account.name;
-    toSelect.appendChild(toOption);
-  });
-}
-function updateFromBalance() {
-  const fromSelect = document.getElementById("transferFrom");
-  const balanceDisplay = document.getElementById("fromBalance");
-  const maxAvailable = document.getElementById("maxAvailable");
-  if (!fromSelect || !balanceDisplay)
-    return;
-  const account = accounts.find((a) => a.name === fromSelect.value);
-  if (account) {
-    balanceDisplay.textContent = account.balance.toString();
-    if (maxAvailable) {
-      maxAvailable.textContent = account.balance.toString();
-    }
-  } else {
-    balanceDisplay.textContent = "0";
-    if (maxAvailable) {
-      maxAvailable.textContent = "0";
-    }
-  }
-}
-function showTransferMessage(message, type) {
-  const messageEl = document.getElementById("transferMessage");
-  if (!messageEl)
-    return;
-  messageEl.textContent = message;
-  messageEl.className = `transfer-message show ${type}`;
-  if (type === "success") {
-    setTimeout(() => {
-      messageEl.classList.remove("show");
-    }, 4000);
-  }
-}
-function setQuickTransferAmount(amount) {
-  const fromSelect = document.getElementById("transferFrom");
-  const amountInput = document.getElementById("transferAmount");
-  if (!fromSelect.value) {
-    showTransferMessage("❌ Please select a sender account first", "error");
-    return;
-  }
-  const account = accounts.find((a) => a.name === fromSelect.value);
-  if (account && account.balance >= amount) {
-    amountInput.value = amount.toString();
-    showTransferMessage(`\uD83D\uDCDD Set transfer amount to ${amount} BB`, "info");
-  } else {
-    showTransferMessage(`❌ Insufficient balance. Available: ${account?.balance || 0} BB`, "error");
-  }
-}
-async function executeTransfer() {
-  try {
-    const fromSelect = document.getElementById("transferFrom");
-    const toSelect = document.getElementById("transferTo");
-    const amountInput = document.getElementById("transferAmount");
-    const btn = document.getElementById("sendTransferBtn");
-    const fromAccount = fromSelect.value;
-    const toAccount = toSelect.value;
-    const amount = parseFloat(amountInput.value);
-    if (!fromAccount || !toAccount || !amount || amount <= 0) {
-      showTransferMessage("❌ Please fill in all transfer fields", "error");
-      log("❌ Please fill in all transfer fields", "error");
-      return;
-    }
-    if (fromAccount === toAccount) {
-      showTransferMessage("❌ Cannot transfer to the same account", "error");
-      log("❌ Cannot transfer to the same account", "error");
-      return;
-    }
-    const fromAccountObj = accounts.find((a) => a.name === fromAccount);
-    if (!fromAccountObj || fromAccountObj.balance < amount) {
-      showTransferMessage(`❌ Insufficient balance. Available: ${fromAccountObj?.balance || 0} BB`, "error");
-      log("❌ Insufficient balance", "error");
-      return;
-    }
-    btn.disabled = true;
-    btn.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">Processing...</span>';
-    log(`\uD83D\uDD04 Transferring ${amount} BB from ${fromAccount} to ${toAccount}...`, "info");
-    showTransferMessage(`⏳ Processing transfer of ${amount} BB...`, "info");
-    await BackendService.transfer(fromAccount, toAccount, amount);
-    log(`✅ Transfer successful!`, "success");
-    showTransferMessage(`✅ Successfully transferred ${amount} BB from ${fromAccount} to ${toAccount}!`, "success");
-    amountInput.value = "";
-    fromSelect.value = "";
-    toSelect.value = "";
-    const balanceDisplay = document.getElementById("fromBalance");
-    if (balanceDisplay) {
-      balanceDisplay.textContent = "0";
-    }
-    btn.disabled = false;
-    btn.innerHTML = '<span class="btn-icon">\uD83D\uDCE4</span><span class="btn-text">Send Transfer</span>';
-    await loadAccounts();
-    await updateTransferStats();
-  } catch (error) {
-    log(`❌ Transfer failed: ${error}`, "error");
-    showTransferMessage(`❌ Transfer failed: ${error}`, "error");
-    const btn = document.getElementById("sendTransferBtn");
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '<span class="btn-icon">\uD83D\uDCE4</span><span class="btn-text">Send Transfer</span>';
-    }
-  }
-}
-async function updateTransferStats() {
-  try {
-    const stats = await BackendService.getLedgerStats();
-    const statsAccounts = document.getElementById("statsAccounts");
-    const statsVolume = document.getElementById("statsVolume");
-    const statsTransfers = document.getElementById("statsTransfers");
-    const statsBets = document.getElementById("statsBets");
-    if (statsAccounts)
-      statsAccounts.textContent = stats.totalAccounts.toString();
-    if (statsVolume)
-      statsVolume.textContent = `${stats.totalVolume.toFixed(0)} BB`;
-    if (statsTransfers)
-      statsTransfers.textContent = stats.totalTransactions.toString();
-    if (statsBets)
-      statsBets.textContent = stats.totalBets.toString();
-  } catch (error) {
-    console.error("Failed to update transfer stats:", error);
+    if (mainContainer)
+      mainContainer.classList.remove("hidden");
+    if (transfersContainer)
+      transfersContainer.classList.add("hidden");
   }
 }
 async function init() {
@@ -896,6 +956,7 @@ async function init() {
     log("\uD83C\uDFAF Welcome to the BlackBook", "success");
     log("⚡ Initializing BlackBook L1 Desktop App...", "info");
     await loadAccounts();
+    transfers_default.initialize(accounts);
     await loadMarkets();
     await updatePrices();
     await loadPolymarketEvents();
@@ -907,6 +968,20 @@ async function init() {
   }
 }
 function setupEventListeners() {
+  const homeBtn = document.getElementById("homeBtn");
+  if (homeBtn) {
+    homeBtn.addEventListener("click", () => {
+      switchPage("markets");
+      debugConsole.log("\uD83C\uDFE0 Returning to home page", "info");
+    });
+  }
+  const blockchainBtn = document.getElementById("blockchainBtn");
+  if (blockchainBtn) {
+    blockchainBtn.addEventListener("click", () => {
+      switchPage("markets");
+      debugConsole.log("\uD83C\uDFE0 Returning to home page", "info");
+    });
+  }
   const toggle = document.getElementById("accountsToggle");
   if (toggle) {
     toggle.addEventListener("click", toggleAccountsDropdown);
@@ -924,32 +999,19 @@ function setupEventListeners() {
   if (transfersBtn) {
     transfersBtn.addEventListener("click", () => {
       switchPage("transfers");
-      updateTransferStats();
+      transfers_default.updateTransferStats();
+    });
+  }
+  const homeNavBtn = document.getElementById("homeNavBtn");
+  if (homeNavBtn) {
+    homeNavBtn.addEventListener("click", () => {
+      switchPage("markets");
+      debugConsole.log("\uD83C\uDFE0 Returning to home page", "info");
     });
   }
   const backBtn = document.getElementById("backBtn");
   if (backBtn) {
     backBtn.addEventListener("click", () => switchPage("markets"));
-  }
-  const fromSelect = document.getElementById("transferFrom");
-  if (fromSelect) {
-    fromSelect.addEventListener("change", updateFromBalance);
-  }
-  const sendBtn = document.getElementById("sendTransferBtn");
-  if (sendBtn) {
-    sendBtn.addEventListener("click", executeTransfer);
-  }
-  const quickTransfer50 = document.getElementById("quickTransfer50");
-  if (quickTransfer50) {
-    quickTransfer50.addEventListener("click", () => setQuickTransferAmount(50));
-  }
-  const quickTransfer100 = document.getElementById("quickTransfer100");
-  if (quickTransfer100) {
-    quickTransfer100.addEventListener("click", () => setQuickTransferAmount(100));
-  }
-  const quickTransfer500 = document.getElementById("quickTransfer500");
-  if (quickTransfer500) {
-    quickTransfer500.addEventListener("click", () => setQuickTransferAmount(500));
   }
   document.addEventListener("click", (e) => {
     const selector = document.querySelector(".accounts-selector");
@@ -963,7 +1025,3 @@ window.selectAccount = selectAccount;
 window.placeBet = placeBet;
 window.toggleAccountsDropdown = toggleAccountsDropdown;
 window.switchPage = switchPage;
-window.updateFromBalance = updateFromBalance;
-window.executeTransfer = executeTransfer;
-window.setQuickTransferAmount = setQuickTransferAmount;
-window.updateTransferStats = updateTransferStats;

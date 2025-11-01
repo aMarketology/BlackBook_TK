@@ -1799,4 +1799,5 @@ async fn get_market_activities(
         "count": activities.len(),
         "activities": activities
     }))
+
 }

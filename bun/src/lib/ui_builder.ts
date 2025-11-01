@@ -48,17 +48,53 @@ export class UIBuilder {
         headerLeft.className = 'header-left';
         
         const title = document.createElement('h1');
+        title.id = 'homeBtn';
         title.textContent = '🎯 BlackBook L1 Prediction Market';
+        title.style.cursor = 'pointer';
+        title.title = 'Click to return to home';
         headerLeft.appendChild(title);
         
         const networkInfo = document.createElement('div');
         networkInfo.className = 'network-info';
-        networkInfo.innerHTML = `
-            <span class="badge">🔗 Layer 1 Blockchain</span>
-            <span class="badge">💎 BB Token</span>
-            <span class="badge">📊 8 Accounts</span>
-            <button class="badge badge-button" id="transfersBtn">🔄 Transfers</button>
-        `;
+        
+        // Layer 1 Blockchain badge - clickable to go home
+        const blockchainBadge = document.createElement('button');
+        blockchainBadge.className = 'badge badge-button';
+        blockchainBadge.id = 'blockchainBtn';
+        blockchainBadge.textContent = '🔗 Layer 1 Blockchain';
+        blockchainBadge.title = 'Click to return to home';
+        blockchainBadge.style.background = 'none';
+        blockchainBadge.style.border = 'none';
+        blockchainBadge.style.cursor = 'pointer';
+        blockchainBadge.style.padding = '0';
+        networkInfo.appendChild(blockchainBadge);
+        
+        // Token badge
+        const tokenBadge = document.createElement('span');
+        tokenBadge.className = 'badge';
+        tokenBadge.textContent = '💎 BB Token';
+        networkInfo.appendChild(tokenBadge);
+        
+        // Accounts badge
+        const accountsBadge = document.createElement('span');
+        accountsBadge.className = 'badge';
+        accountsBadge.textContent = '📊 8 Accounts';
+        networkInfo.appendChild(accountsBadge);
+        
+        // Home button
+        const homeNavBtn = document.createElement('button');
+        homeNavBtn.className = 'badge badge-button';
+        homeNavBtn.id = 'homeNavBtn';
+        homeNavBtn.textContent = '🏠 Home';
+        networkInfo.appendChild(homeNavBtn);
+        
+        // Transfers button
+        const transfersBtn = document.createElement('button');
+        transfersBtn.className = 'badge badge-button';
+        transfersBtn.id = 'transfersBtn';
+        transfersBtn.textContent = '🔄 Transfers';
+        networkInfo.appendChild(transfersBtn);
+        
         headerLeft.appendChild(networkInfo);
         
         // Right side - account selector
