@@ -571,3 +571,33 @@ pub fn get_all_markets(state: State<AppState>) -> Result<Vec<Market>, String> {
     let markets: Vec<Market> = ledger.market_manager.markets.values().cloned().collect();
     Ok(markets)
 }
+
+// ============================================
+// ADMIN COMMANDS
+// ============================================
+
+/// Admin command to mint tokens and add them to an account
+#[tauri::command]
+pub fn admin_mint_tokens(account: String, amount: f64, state: State<AppState>) -> Result<String, String> {
+    let mut ledger = state.lock().map_err(|e| e.to_string())?;
+    
+    println!("🔐 ADMIN: Minting {} BB to {}", amount, account);
+    
+    let result = ledger.admin_mint_tokens(&account, amount)?;
+    
+    println!("✅ {}", result);
+    Ok(result)
+}
+
+/// Admin command to set an account balance to a specific value
+#[tauri::command]
+pub fn admin_set_balance(account: String, new_balance: f64, state: State<AppState>) -> Result<String, String> {
+    let mut ledger = state.lock().map_err(|e| e.to_string())?;
+    
+    println!("🔐 ADMIN: Setting {} balance to {} BB", account, new_balance);
+    
+    let result = ledger.admin_set_balance(&account, new_balance)?;
+    
+    println!("✅ {}", result);
+    Ok(result)
+}

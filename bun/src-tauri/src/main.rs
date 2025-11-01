@@ -36,6 +36,9 @@ fn main() {
             commands::get_prices,
             commands::get_polymarket_events,
             commands::get_blackbook_events,
+            // Admin Commands
+            commands::admin_mint_tokens,
+            commands::admin_set_balance,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

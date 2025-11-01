@@ -266,4 +266,42 @@ export class BackendService {
             throw error;
         }
     }
+
+    // ============================================
+    // ADMIN OPERATIONS
+    // ============================================
+
+    /**
+     * Admin function to mint tokens and add them to an account
+     * @param account - Account name or address
+     * @param amount - Amount of tokens to mint (must be positive)
+     */
+    static async adminMintTokens(account: string, amount: number): Promise<string> {
+        try {
+            console.log(`🔐 Admin: Minting ${amount} BB to ${account}`);
+            const result = await invoke('admin_mint_tokens', { account, amount }) as string;
+            console.log(`✅ ${result}`);
+            return result;
+        } catch (error) {
+            console.error('❌ Admin mint failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Admin function to set an account balance to a specific value
+     * @param account - Account name or address
+     * @param newBalance - New balance to set (must be non-negative)
+     */
+    static async adminSetBalance(account: string, newBalance: number): Promise<string> {
+        try {
+            console.log(`🔐 Admin: Setting ${account} balance to ${newBalance} BB`);
+            const result = await invoke('admin_set_balance', { account, newBalance }) as string;
+            console.log(`✅ ${result}`);
+            return result;
+        } catch (error) {
+            console.error('❌ Admin set balance failed:', error);
+            throw error;
+        }
+    }
 }

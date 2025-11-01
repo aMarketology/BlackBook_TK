@@ -568,4 +568,106 @@ impl Ledger {
 
         Ok(successful_payouts)
     }
+
+    // ============================================
+    // ADMIN FUNCTIONS
+    // ============================================
+
+    /// Admin function to mint tokens and add them to an account
+    /// This allows admins to add tokens to any wallet for testing or rewards
+    pub fn admin_mint_tokens(&mut self, account_or_name: &str, amount: f64) -> Result<String, String> {
+        if amount <= 0.0 {
+            return Err("Mint amount must be positive".to_string());
+        }
+
+        let account_address = self.resolve_address(account_or_name);
+        let current_balance = self.balances.get(&account_address).copied().unwrap_or(0.0);
+        let new_balance = current_balance + amount;
+
+        self.balances.insert(account_address.clone(), new_balance);
+
+        // Record transaction
+        let tx = Transaction {
+            from: "ADMIN_MINT".to_string(),
+            to: account_address.clone(),
+            amount,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+            tx_type: "admin_mint".to_string(),
+        };
+        self.transactions.push(tx);
+
+        // Find account name from address
+        let account_name = self.accounts
+            .iter()
+            .find(|(_, addr)| *addr == &account_address)
+            .map(|(name, _)| name.clone())
+            .unwrap_or(account_address.clone());
+
+        // Create recipe for admin mint
+        let recipe = self.create_recipe(
+            "admin_action",
+            &account_name,
+            amount,
+            &format!("Admin minted {} BB tokens", amount),
+            None,
+        );
+        self.recipes.push(recipe);
+
+        Ok(format!(
+            "Admin minted {} BB to {} ({}). New balance: {} BB",
+            amount, account_name, account_address, new_balance
+        ))
+    }
+
+    /// Admin function to set an account balance to a specific value
+    /// This allows complete control over account balances
+    pub fn admin_set_balance(&mut self, account_or_name: &str, new_balance: f64) -> Result<String, String> {
+        if new_balance < 0.0 {
+            return Err("Balance cannot be negative".to_string());
+        }
+
+        let account_address = self.resolve_address(account_or_name);
+        let old_balance = self.balances.get(&account_address).copied().unwrap_or(0.0);
+        let diff = new_balance - old_balance;
+
+        self.balances.insert(account_address.clone(), new_balance);
+
+        // Record transaction
+        let tx = Transaction {
+            from: if diff >= 0.0 { "ADMIN_ADD".to_string() } else { account_address.clone() },
+            to: if diff >= 0.0 { account_address.clone() } else { "ADMIN_REMOVE".to_string() },
+            amount: diff.abs(),
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+            tx_type: "admin_set_balance".to_string(),
+        };
+        self.transactions.push(tx);
+
+        // Find account name from address
+        let account_name = self.accounts
+            .iter()
+            .find(|(_, addr)| *addr == &account_address)
+            .map(|(name, _)| name.clone())
+            .unwrap_or(account_address.clone());
+
+        // Create recipe for admin action
+        let recipe = self.create_recipe(
+            "admin_action",
+            &account_name,
+            diff,
+            &format!("Admin set balance to {} BB (change: {:+} BB)", new_balance, diff),
+            None,
+        );
+        self.recipes.push(recipe);
+
+        Ok(format!(
+            "Admin set balance for {} ({}) to {} BB (was {} BB)",
+            account_name, account_address, new_balance, old_balance
+        ))
+    }
 }

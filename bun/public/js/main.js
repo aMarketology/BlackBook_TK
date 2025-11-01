@@ -166,6 +166,28 @@ class BackendService {
       throw error;
     }
   }
+  static async adminMintTokens(account, amount) {
+    try {
+      console.log(`\uD83D\uDD10 Admin: Minting ${amount} BB to ${account}`);
+      const result = await invoke("admin_mint_tokens", { account, amount });
+      console.log(`✅ ${result}`);
+      return result;
+    } catch (error) {
+      console.error("❌ Admin mint failed:", error);
+      throw error;
+    }
+  }
+  static async adminSetBalance(account, newBalance) {
+    try {
+      console.log(`\uD83D\uDD10 Admin: Setting ${account} balance to ${newBalance} BB`);
+      const result = await invoke("admin_set_balance", { account, newBalance });
+      console.log(`✅ ${result}`);
+      return result;
+    } catch (error) {
+      console.error("❌ Admin set balance failed:", error);
+      throw error;
+    }
+  }
 }
 
 // src/lib/debug_console.ts
