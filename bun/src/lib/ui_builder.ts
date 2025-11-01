@@ -189,6 +189,11 @@ static buildMainContent(): HTMLElement {
         const centerContent = document.createElement('main');
         centerContent.className = 'center-content';
         centerContent.innerHTML = `
+            <h2>✅ Active BlackBook Events</h2>
+            <div id="blackbookEvents" class="markets-grid">
+                <p class="loading">Loading events...</p>
+            </div>
+            
             <h2>📊 Active Markets</h2>
             <div id="marketsList" class="markets-grid">
                 <p class="loading">Loading markets...</p>

@@ -421,6 +421,11 @@ class UIBuilder {
     const centerContent = document.createElement("main");
     centerContent.className = "center-content";
     centerContent.innerHTML = `
+            <h2>✅ Active BlackBook Events</h2>
+            <div id="blackbookEvents" class="markets-grid">
+                <p class="loading">Loading events...</p>
+            </div>
+            
             <h2>\uD83D\uDCCA Active Markets</h2>
             <div id="marketsList" class="markets-grid">
                 <p class="loading">Loading markets...</p>
@@ -537,14 +542,24 @@ class UIBuilder {
   }
   static populateAccountsList(accounts) {
     const accountsList = document.getElementById("accountsList");
-    if (!accountsList)
+    if (!accountsList) {
+      console.log("❌ accountsList element not found");
       return;
-    accountsList.innerHTML = accounts.map((account) => `
+    }
+    console.log(`\uD83D\uDCCB populateAccountsList called with ${accounts.length} accounts`, accounts);
+    if (accounts.length === 0) {
+      console.log("⚠️ No accounts to populate");
+      accountsList.innerHTML = '<p class="empty-state">No accounts available</p>';
+      return;
+    }
+    const html = accounts.map((account) => `
             <div class="account-item" data-account="${account.name}">
                 <div class="account-name">${account.name}</div>
                 <div class="account-balance">${account.balance} BB</div>
             </div>
         `).join("");
+    console.log("✅ Setting accountsList innerHTML with", accounts.length, "accounts");
+    accountsList.innerHTML = html;
   }
   static populateTransferSelects(accounts) {
     const fromSelect = document.getElementById("transferFrom");
@@ -785,6 +800,152 @@ async function loadMarkets() {
     log(`❌ Failed to load markets: ${error}`, "error");
   }
 }
+async function loadActiveMarketsFromRSS() {
+  try {
+    console.log("\uD83D\uDCE1 Fetching event.rss for Active Markets...");
+    const response = await fetch("../../../blackBook/src/event.rss");
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const xmlText = await response.text();
+    console.log("\uD83D\uDCC4 RSS fetched, parsing...");
+    const parser = new DOMParser;
+    const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+    if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
+      throw new Error("Failed to parse RSS XML");
+    }
+    const items = xmlDoc.getElementsByTagName("item");
+    console.log(`✅ Found ${items.length} active markets in RSS`);
+    const rssMarkets = [];
+    for (let i = 0;i < items.length; i++) {
+      const item = items[i];
+      const title = item.getElementsByTagName("title")[0]?.textContent || "Untitled Market";
+      const description = item.getElementsByTagName("description")[0]?.textContent || "";
+      const link = item.getElementsByTagName("link")[0]?.textContent || "#";
+      const confidence = parseFloat(item.getElementsByTagName("confidence")[0]?.textContent || "0");
+      const marketId = item.getElementsByTagName("marketId")[0]?.textContent || "";
+      const options = Array.from(item.getElementsByTagName("option")).map((opt) => opt.textContent || "");
+      rssMarkets.push({
+        title: title.replace(/^✅ ACTIVE MARKET - /, ""),
+        description,
+        link,
+        confidence,
+        marketId,
+        options
+      });
+    }
+    renderActiveMarkets(rssMarkets);
+    log(`✅ Loaded ${rssMarkets.length} active markets from event.rss`, "success");
+  } catch (error) {
+    console.error("❌ Failed to load RSS markets:", error);
+    log(`⚠️ Could not load active markets: ${error}`, "warning");
+  }
+}
+function renderActiveMarkets(rssMarkets) {
+  renderBlackbookEvents(rssMarkets);
+  const list = document.getElementById("marketsList");
+  if (!list) {
+    console.log("⚠️ marketsList element not found");
+    return;
+  }
+  if (rssMarkets.length === 0) {
+    list.innerHTML = '<p class="empty-state">No active markets available</p>';
+    return;
+  }
+  list.innerHTML = rssMarkets.map((market) => `
+        <div class="market-card">
+            <div class="market-header">
+                <h3>${market.title}</h3>
+                <span class="confidence-badge" style="background: hsl(${Math.round(market.confidence * 120)}, 100%, 50%)">
+                    ${(market.confidence * 100).toFixed(0)}% confidence
+                </span>
+            </div>
+            <p class="market-description">${market.description}</p>
+            <div class="market-options">
+                ${market.options.map((option) => `
+                    <div class="option-pill">${option}</div>
+                `).join("")}
+            </div>
+            <div class="market-footer">
+                <a href="${market.link}" target="_blank" class="read-more">Read source →</a>
+            </div>
+        </div>
+    `).join("");
+}
+function renderBlackbookEvents(rssMarkets) {
+  const eventsContainer = document.getElementById("blackbookEvents");
+  if (!eventsContainer) {
+    console.log("⚠️ blackbookEvents element not found");
+    return;
+  }
+  if (rssMarkets.length === 0) {
+    eventsContainer.innerHTML = '<p class="empty-state">No active BlackBook events available</p>';
+    return;
+  }
+  console.log(`\uD83D\uDCCA Rendering ${rssMarkets.length} BlackBook events with betting`);
+  eventsContainer.innerHTML = rssMarkets.map((market, idx) => `
+        <div class="event-card">
+            <div class="event-header">
+                <div>
+                    <h3>${market.title}</h3>
+                    <p class="event-description">${market.description}</p>
+                </div>
+                <span class="confidence-score" style="background: hsl(${Math.round(market.confidence * 120)}, 100%, 50%)">
+                    ${(market.confidence * 100).toFixed(0)}%
+                </span>
+            </div>
+            
+            <div class="betting-options">
+                ${market.options.map((option, optIdx) => `
+                    <div class="bet-option">
+                        <button class="bet-btn yes-btn" data-market="${idx}" data-outcome="${optIdx}">
+                            <span class="outcome-text">${option}</span>
+                            <span class="bet-action">Place Bet</span>
+                        </button>
+                    </div>
+                `).join("")}
+            </div>
+            
+            <div class="event-footer">
+                <a href="${market.link}" target="_blank" class="source-link">\uD83D\uDCD6 Source →</a>
+                <span class="market-id" title="${market.marketId}">ID: ${market.marketId.substring(0, 8)}...</span>
+            </div>
+        </div>
+    `).join("");
+  setupBlackbookEventListeners(rssMarkets);
+}
+function setupBlackbookEventListeners(rssMarkets) {
+  const betButtons = document.querySelectorAll(".bet-btn");
+  betButtons.forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const marketIdx = e.currentTarget.getAttribute("data-market");
+      const outcomeIdx = e.currentTarget.getAttribute("data-outcome");
+      if (!marketIdx || !outcomeIdx) {
+        log("❌ Invalid bet data", "error");
+        return;
+      }
+      const market = rssMarkets[parseInt(marketIdx)];
+      const outcome = market.options[parseInt(outcomeIdx)];
+      if (!selectedAccount) {
+        log("❌ Please select an account first", "error");
+        return;
+      }
+      const amount = prompt(`Enter amount to bet on "${outcome}" (in BB):`);
+      if (!amount || isNaN(parseFloat(amount))) {
+        log("❌ Invalid bet amount", "error");
+        return;
+      }
+      try {
+        log(`\uD83C\uDFAF Placing bet on "${outcome}" for ${amount} BB...`, "info");
+        await BackendService.placeBet(market.marketId, selectedAccount.name, parseFloat(amount), outcome);
+        log(`✅ Bet placed successfully! ${amount} BB on "${outcome}"`, "success");
+        await loadAccounts();
+      } catch (error) {
+        log(`❌ Bet failed: ${error}`, "error");
+      }
+    });
+  });
+}
 async function updatePrices() {
   try {
     log("\uD83D\uDCC8 Fetching live prices from CoinGecko...", "info");
@@ -849,6 +1010,7 @@ async function placeBet(marketId, outcome, amount) {
   }
 }
 function renderAccounts() {
+  console.log(`\uD83C\uDFAF renderAccounts called with ${accounts.length} accounts`, accounts);
   UIBuilder.populateAccountsList(accounts);
   UIBuilder.populateTransferSelects(accounts);
   updateAccountsToggleDisplay();
@@ -958,6 +1120,7 @@ async function init() {
     await loadAccounts();
     transfers_default.initialize(accounts);
     await loadMarkets();
+    await loadActiveMarketsFromRSS();
     await updatePrices();
     await loadPolymarketEvents();
     setInterval(updatePrices, 30000);

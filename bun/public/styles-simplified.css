@@ -313,7 +313,27 @@ html, body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 8px;
+}
+
+.center-content::-webkit-scrollbar {
+    width: 10px;
+}
+
+.center-content::-webkit-scrollbar-track {
+    background: var(--death-black);
+}
+
+.center-content::-webkit-scrollbar-thumb {
+    background: var(--death-red);
+    border-radius: 5px;
+    border: 2px solid var(--death-black);
+}
+
+.center-content::-webkit-scrollbar-thumb:hover {
+    background: var(--gold-accent);
 }
 
 .center-content h2 {
@@ -321,27 +341,17 @@ html, body {
     color: var(--page-yellow);
     margin-bottom: 12px;
     text-shadow: 0 0 10px rgba(230, 57, 70, 0.2);
+    margin-top: 12px;
+}
+
+.center-content h2:first-child {
+    margin-top: 0;
 }
 
 .markets-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
-    overflow-y: auto;
-    padding-right: 8px;
-}
-
-.markets-grid::-webkit-scrollbar {
-    width: 8px;
-}
-
-.markets-grid::-webkit-scrollbar-track {
-    background: var(--death-black);
-}
-
-.markets-grid::-webkit-scrollbar-thumb {
-    background: var(--dark-gray);
-    border-radius: 4px;
 }
 
 .market-card {
@@ -368,6 +378,215 @@ html, body {
     color: var(--pale-text);
     margin-bottom: 9px;
     line-height: 1.4;
+}
+
+/* RSS Market Card Styles */
+.market-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.market-header h3 {
+    flex: 1;
+    margin: 0;
+    font-size: 0.825rem;
+    color: var(--page-yellow);
+}
+
+.confidence-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 0.6375rem;
+    font-weight: bold;
+    color: #000;
+    white-space: nowrap;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+}
+
+.market-description {
+    font-size: 0.675rem;
+    color: var(--pale-text);
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.market-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--dark-gray);
+}
+
+.option-pill {
+    display: inline-block;
+    padding: 4px 8px;
+    background: rgba(230, 57, 70, 0.15);
+    border: 1px solid var(--death-red);
+    border-radius: 12px;
+    font-size: 0.6375rem;
+    color: var(--death-red);
+    white-space: nowrap;
+}
+
+.market-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.read-more {
+    font-size: 0.675rem;
+    color: var(--gold-accent);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    padding: 4px 0;
+    border-bottom: 1px solid transparent;
+}
+
+.read-more:hover {
+    color: var(--page-yellow);
+    border-bottom-color: var(--gold-accent);
+}
+
+/* Active BlackBook Events Styles */
+.event-card {
+    background: var(--deep-black);
+    border: 2px solid var(--death-red);
+    border-radius: 6px;
+    padding: 16px;
+    transition: all 0.3s ease;
+}
+
+.event-card:hover {
+    box-shadow: 0 0 25px rgba(230, 57, 70, 0.3);
+    border-color: var(--gold-accent);
+}
+
+.event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.event-header h3 {
+    margin: 0 0 6px 0;
+    font-size: 0.875rem;
+    color: var(--page-yellow);
+    line-height: 1.3;
+}
+
+.event-description {
+    margin: 0;
+    font-size: 0.725rem;
+    color: var(--pale-text);
+    line-height: 1.4;
+}
+
+.confidence-score {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 50px;
+    height: 50px;
+    border-radius: 6px;
+    font-size: 0.825rem;
+    font-weight: bold;
+    color: #000;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+}
+
+.betting-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--dark-gray);
+}
+
+.bet-option {
+    flex: 1;
+}
+
+.bet-btn {
+    width: 100%;
+    padding: 12px 10px;
+    background: linear-gradient(135deg, rgba(230, 57, 70, 0.1), rgba(230, 57, 70, 0.05));
+    border: 1.5px solid var(--death-red);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.bet-btn:hover {
+    background: linear-gradient(135deg, rgba(230, 57, 70, 0.2), rgba(230, 57, 70, 0.15));
+    box-shadow: 0 0 15px rgba(230, 57, 70, 0.4);
+    transform: translateY(-2px);
+}
+
+.bet-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 0 8px rgba(230, 57, 70, 0.2);
+}
+
+.outcome-text {
+    font-size: 0.7rem;
+    color: var(--page-yellow);
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.bet-action {
+    font-size: 0.625rem;
+    color: var(--death-red);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.event-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.source-link {
+    font-size: 0.675rem;
+    color: var(--gold-accent);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    padding: 4px 6px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+}
+
+.source-link:hover {
+    color: var(--page-yellow);
+    background: rgba(230, 57, 70, 0.1);
+    border-color: var(--death-red);
+}
+
+.market-id {
+    font-size: 0.6rem;
+    color: var(--dark-gray);
+    font-family: 'Courier New', monospace;
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
 }
 
 .market-prices {
