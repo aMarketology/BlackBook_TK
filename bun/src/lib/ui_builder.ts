@@ -559,9 +559,8 @@ static buildMainContent(): HTMLElement {
         const pageHeader = document.createElement('div');
         pageHeader.className = 'page-header';
         pageHeader.innerHTML = `
-            <button class="back-btn" id="backFromPriceActionBtn">← Back to Markets</button>
-            <h2>⚡ Price Action Trading</h2>
-            <p class="page-subtitle">Bet on Bitcoin & Solana price movements</p>
+            <button class="back-btn" id="backFromPriceActionBtn">← Back</button>
+            <h2>⚡ Price Action</h2>
         `;
         page.appendChild(pageHeader);
         
@@ -569,114 +568,97 @@ static buildMainContent(): HTMLElement {
         const pageContent = document.createElement('div');
         pageContent.className = 'page-content';
         pageContent.innerHTML = `
-            <div class="price-action-container">
-                <!-- Live Prices Display -->
-                <div class="price-cards">
-                    <div class="price-card bitcoin-card">
-                        <div class="coin-header">
+            <div class="price-action-grid">
+                <!-- Live Prices Row -->
+                <div class="price-row">
+                    <div class="price-card btc">
+                        <div class="coin-info">
                             <span class="coin-icon">₿</span>
-                            <h3>Bitcoin</h3>
-                        </div>
-                        <div class="current-price">
-                            <span class="price-label">Current Price</span>
-                            <span class="price-value" id="btcPriceAction">$0.00</span>
+                            <div>
+                                <div class="coin-name">Bitcoin</div>
+                                <div class="coin-price" id="btcPriceAction">$0.00</div>
+                            </div>
                         </div>
                         <div class="price-change" id="btcChange">+0.00%</div>
                     </div>
                     
-                    <div class="price-card solana-card">
-                        <div class="coin-header">
+                    <div class="price-card sol">
+                        <div class="coin-info">
                             <span class="coin-icon">◎</span>
-                            <h3>Solana</h3>
-                        </div>
-                        <div class="current-price">
-                            <span class="price-label">Current Price</span>
-                            <span class="price-value" id="solPriceAction">$0.00</span>
+                            <div>
+                                <div class="coin-name">Solana</div>
+                                <div class="coin-price" id="solPriceAction">$0.00</div>
+                            </div>
                         </div>
                         <div class="price-change" id="solChange">+0.00%</div>
                     </div>
                 </div>
 
-                <!-- Betting Interface -->
-                <div class="betting-panel">
-                    <h3>🎯 Place Your Bet</h3>
-                    
-                    <!-- Asset Selection -->
-                    <div class="form-group">
-                        <label>Select Asset:</label>
-                        <div class="asset-buttons">
-                            <button class="asset-btn active" id="selectBitcoin" data-asset="bitcoin">
-                                ₿ Bitcoin
-                            </button>
-                            <button class="asset-btn" id="selectSolana" data-asset="solana">
-                                ◎ Solana
-                            </button>
-                        </div>
+                <!-- Betting Panel -->
+                <div class="compact-bet-panel">
+                    <div class="panel-title">
+                        <span>🎯</span>
+                        <h3>Place Bet</h3>
                     </div>
                     
-                    <!-- Timeframe Selection -->
-                    <div class="form-group">
-                        <label>Select Timeframe:</label>
-                        <div class="timeframe-buttons">
-                            <button class="timeframe-btn active" id="timeframe1min" data-time="60">
-                                ⏱️ 1 Minute
-                            </button>
-                            <button class="timeframe-btn" id="timeframe15min" data-time="900">
-                                ⏲️ 15 Minutes
+                    <div class="bet-form-compact">
+                        <!-- Asset + Timeframe + Direction in one row -->
+                        <div class="bet-options-row">
+                            <div class="option-group">
+                                <label>Asset:</label>
+                                <div class="btn-group">
+                                    <button class="option-btn active" id="selectBitcoin" data-asset="bitcoin">₿</button>
+                                    <button class="option-btn" id="selectSolana" data-asset="solana">◎</button>
+                                </div>
+                            </div>
+                            
+                            <div class="option-group">
+                                <label>Time:</label>
+                                <div class="btn-group">
+                                    <button class="option-btn active" id="timeframe1min" data-time="60">1m</button>
+                                    <button class="option-btn" id="timeframe15min" data-time="900">15m</button>
+                                </div>
+                            </div>
+                            
+                            <div class="option-group">
+                                <label>Direction:</label>
+                                <div class="btn-group">
+                                    <button class="option-btn direction-up" id="predictHigher">📈</button>
+                                    <button class="option-btn direction-down" id="predictLower">📉</button>
+                                </div>
+                            </div>
+                            
+                            <div class="option-group">
+                                <label>Amount:</label>
+                                <input type="number" id="betAmount" class="amount-input" 
+                                    placeholder="BB" min="1" step="1">
+                            </div>
+                            
+                            <button class="bet-submit-btn" id="placePriceActionBet">
+                                🎲 Bet
                             </button>
                         </div>
-                    </div>
-                    
-                    <!-- Direction Selection -->
-                    <div class="form-group">
-                        <label>Predict Price Direction:</label>
-                        <div class="direction-buttons">
-                            <button class="direction-btn higher-btn" id="predictHigher">
-                                📈 HIGHER
-                            </button>
-                            <button class="direction-btn lower-btn" id="predictLower">
-                                📉 LOWER
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Bet Amount -->
-                    <div class="form-group">
-                        <label for="betAmount">
-                            <span class="label-text">Bet Amount (BB):</span>
-                            <span class="required">*</span>
-                        </label>
-                        <input 
-                            type="number" 
-                            id="betAmount" 
-                            placeholder="Enter amount in BB tokens..." 
-                            min="1"
-                            step="1"
-                        />
+                        
                         <div class="balance-hint">
-                            Available: <span id="availableBalance">0 BB</span>
+                            Balance: <span id="availableBalance">0 BB</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Bets & History -->
+                <div class="bets-panels-row">
+                    <div class="panel-half">
+                        <h3>📊 Active Bets</h3>
+                        <div id="activeBetsList" class="compact-bets-list">
+                            <p class="empty-state">No active bets</p>
                         </div>
                     </div>
                     
-                    <!-- Place Bet Button -->
-                    <button class="place-bet-btn" id="placePriceActionBet">
-                        🎲 Place Bet
-                    </button>
-                </div>
-
-                <!-- Active Bets -->
-                <div class="active-bets-panel">
-                    <h3>📊 Your Active Bets</h3>
-                    <div id="activeBetsList" class="bets-list">
-                        <p class="empty-state">No active bets</p>
-                    </div>
-                </div>
-
-                <!-- Bet History -->
-                <div class="bet-history-panel">
-                    <h3>📜 Recent Results</h3>
-                    <div id="betHistory" class="history-list">
-                        <p class="empty-state">No bet history</p>
+                    <div class="panel-half">
+                        <h3>📜 History</h3>
+                        <div id="betHistory" class="compact-bets-list">
+                            <p class="empty-state">No history</p>
+                        </div>
                     </div>
                 </div>
             </div>

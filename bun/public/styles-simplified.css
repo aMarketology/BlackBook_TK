@@ -2669,3 +2669,524 @@ html, body {
         flex-wrap: wrap;
     }
 }
+
+/* ============================================
+   TOKEN MANAGEMENT - SIMPLIFIED LAYOUT
+   ============================================ */
+
+/* Compact tab navigation */
+.tab-nav {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.tab-btn {
+    background: rgba(10, 10, 10, 0.6);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    border-radius: 6px;
+    padding: 8px 16px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+    background: rgba(139, 0, 0, 0.2);
+    border-color: #8B0000;
+}
+
+.tab-btn.active {
+    background: #8B0000;
+    border-color: #8B0000;
+    color: #fff;
+}
+
+.tab-icon {
+    font-size: 16px;
+}
+
+.tab-label {
+    font-weight: 600;
+}
+
+/* Compact form styling */
+.transfer-container,
+.admin-container,
+.quick-actions-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.transfer-card,
+.admin-card,
+.action-card {
+    background: rgba(10, 10, 10, 0.6);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    backdrop-filter: blur(5px);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(139, 0, 0, 0.2);
+}
+
+.card-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #8B0000;
+    margin: 0;
+}
+
+.card-badge {
+    font-size: 10px;
+    padding: 4px 8px;
+    background: rgba(139, 0, 0, 0.2);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.8);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.admin-badge {
+    background: rgba(255, 140, 0, 0.2);
+    border-color: rgba(255, 140, 0, 0.4);
+    color: #FF8C00;
+}
+
+.form-group {
+    margin-bottom: 12px;
+}
+
+.form-group label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 600;
+}
+
+.required {
+    color: #FF4444;
+}
+
+.form-input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #8B0000;
+}
+
+.balance-display {
+    margin-top: 6px;
+    padding: 6px 10px;
+    background: rgba(139, 0, 0, 0.1);
+    border-radius: 4px;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.balance-label {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.balance-value {
+    color: #8B0000;
+    font-weight: 700;
+}
+
+.hint-text {
+    margin-top: 4px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: #8B0000;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: #A52A2A;
+}
+
+.btn-admin {
+    background: #FF8C00;
+    color: #fff;
+}
+
+.btn-admin:hover {
+    background: #FFA500;
+}
+
+.btn-large {
+    width: 100%;
+    padding: 12px;
+}
+
+.btn-icon {
+    font-size: 18px;
+}
+
+.transfer-message,
+.admin-message {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    display: none;
+}
+
+.transfer-message.success,
+.admin-message.success {
+    display: block;
+    background: rgba(0, 200, 0, 0.1);
+    border: 1px solid rgba(0, 200, 0, 0.3);
+    color: #00CC00;
+}
+
+.transfer-message.error,
+.admin-message.error {
+    display: block;
+    background: rgba(255, 0, 0, 0.1);
+    border: 1px solid rgba(255, 0, 0, 0.3);
+    color: #FF4444;
+}
+
+/* Quick action buttons */
+.quick-amount-actions {
+    margin-top: 15px;
+}
+
+.quick-amount-actions h4 {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 8px;
+}
+
+.quick-btn-grid {
+    display: flex;
+    gap: 8px;
+}
+
+.quick-btn {
+    flex: 1;
+    padding: 8px;
+    background: rgba(139, 0, 0, 0.2);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    border-radius: 4px;
+    color: #8B0000;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.quick-btn:hover {
+    background: rgba(139, 0, 0, 0.3);
+    border-color: #8B0000;
+}
+
+/* ============================================
+   PRICE ACTION - COMPACT LAYOUT
+   ============================================ */
+
+.price-action-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Compact price cards in a row */
+.price-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.price-card {
+    background: rgba(10, 10, 10, 0.6);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.price-card.btc {
+    border-color: rgba(247, 147, 26, 0.4);
+}
+
+.price-card.sol {
+    border-color: rgba(20, 241, 149, 0.4);
+}
+
+.coin-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.coin-icon {
+    font-size: 32px;
+}
+
+.coin-name {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.coin-price {
+    font-size: 20px;
+    color: #8B0000;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.price-change {
+    font-size: 14px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.price-change.positive {
+    color: #00CC00;
+    background: rgba(0, 200, 0, 0.1);
+}
+
+.price-change.negative {
+    color: #FF4444;
+    background: rgba(255, 0, 0, 0.1);
+}
+
+/* Compact betting panel */
+.compact-bet-panel {
+    background: rgba(10, 10, 10, 0.6);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    backdrop-filter: blur(5px);
+}
+
+.panel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(139, 0, 0, 0.2);
+}
+
+.panel-title span {
+    font-size: 18px;
+}
+
+.panel-title h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #8B0000;
+    margin: 0;
+}
+
+.bet-form-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* All bet options in one row */
+.bet-options-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.option-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.option-group label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.btn-group {
+    display: flex;
+    gap: 4px;
+}
+
+.option-btn {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.7);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 40px;
+}
+
+.option-btn:hover {
+    background: rgba(139, 0, 0, 0.2);
+    border-color: #8B0000;
+}
+
+.option-btn.active {
+    background: #8B0000;
+    border-color: #8B0000;
+    color: #fff;
+}
+
+.option-btn.direction-up.active {
+    background: #00CC00;
+    border-color: #00CC00;
+}
+
+.option-btn.direction-down.active {
+    background: #FF4444;
+    border-color: #FF4444;
+}
+
+.amount-input {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    width: 100px;
+}
+
+.amount-input:focus {
+    outline: none;
+    border-color: #8B0000;
+}
+
+.bet-submit-btn {
+    background: #8B0000;
+    border: none;
+    color: #fff;
+    padding: 8px 20px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.bet-submit-btn:hover {
+    background: #A52A2A;
+}
+
+.balance-hint {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    padding: 6px 10px;
+    background: rgba(139, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+/* Active bets and history in two columns */
+.bets-panels-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.panel-half {
+    background: rgba(10, 10, 10, 0.6);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    backdrop-filter: blur(5px);
+}
+
+.panel-half h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #8B0000;
+    margin: 0 0 10px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(139, 0, 0, 0.2);
+}
+
+.compact-bets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.empty-state {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 12px;
+    font-style: italic;
+    padding: 20px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .price-row,
+    .bets-panels-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .bet-options-row {
+        flex-wrap: wrap;
+    }
+}
