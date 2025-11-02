@@ -37,3 +37,41 @@ GET /live-btc-market: Retrieves information about a specific, continuously updat
 POST /bet: Allows a user to place a bet on a specific outcome within a market, taking details (market ID, user address, chosen option, amount) in the request body.
 
 POST /resolve/:market_id/:winning_option: An administrative endpoint used to manually resolve a prediction market, declaring the winning outcome and triggering the payout process.
+
+
+HTTP ^^ Above 
+
+
+get_accounts - Get all 8 blockchain accounts (ALICE, BOB, CHARLIE, etc.)
+get_balance - Get balance for a specific account address
+admin_deposit - Admin function to deposit tokens to an account
+💸 TRANSFERS (1 command)
+transfer - Transfer BB tokens between accounts
+📜 TRANSACTIONS & RECIPES (6 commands)
+get_all_transactions - Get all transaction history
+get_account_transactions - Get transactions for specific account
+get_recipes - Get all blockchain recipes (comprehensive activity log)
+get_account_recipes - Get recipes for specific account
+get_recipes_by_type - Filter recipes by type (bet_placed, bet_win, transfer, etc.)
+get_stats - Get ledger statistics (total volume, accounts, transactions)
+🎯 BETTING OPERATIONS (3 commands)
+place_bet - Place a simple bet (legacy)
+record_bet_win - Record a bet win outcome
+record_bet_loss - Record a bet loss outcome
+📊 PREDICTION MARKETS (9 commands)
+create_market - Create a new prediction market
+get_markets - Get all active markets
+place_market_bet - Place a bet on a prediction market
+get_open_markets - Get only open markets
+get_market_stats - Get statistics for a specific market
+close_market - Close a market to new bets
+resolve_market - Resolve market with winning outcome & distribute payouts (WITH ESCROW)
+get_user_bets - Get all bets for a specific user
+get_all_markets - Get all markets (including closed/resolved)
+🌐 EXTERNAL DATA (3 commands)
+get_prices - Get live BTC & SOL prices from CoinGecko
+get_polymarket_events - Get prediction events from Polymarket API
+get_blackbook_events - Get BlackBook events from RSS feed
+🔐 ADMIN COMMANDS (2 commands) ⭐ Just Added!
+admin_mint_tokens - Admin mint BB tokens to any account
+admin_set_balance - Admin set account balance to specific value
