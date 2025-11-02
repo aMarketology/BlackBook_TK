@@ -1,4 +1,4 @@
-// node_modules/@tauri-apps/api/tauri.js
+// bun/node_modules/@tauri-apps/api/tauri.js
 function uid() {
   return window.crypto.getRandomValues(new Uint32Array(1))[0];
 }
@@ -36,7 +36,7 @@ async function invoke(cmd, args = {}) {
   });
 }
 
-// src/lib/backend_service.ts
+// bun/src/lib/backend_service.ts
 class BackendService {
   static async getAllAccounts() {
     try {
@@ -92,7 +92,10 @@ class BackendService {
   }
   static async getRecipes() {
     try {
-      return await invoke("get_recipes");
+      console.log("\uD83D\uDCCB BackendService.getRecipes() - Calling Tauri IPC get_recipes...");
+      const result = await invoke("get_recipes");
+      console.log(`\uD83D\uDCCB BackendService.getRecipes() - Received ${result.length} recipes from Tauri:`, result);
+      return result;
     } catch (error) {
       console.error("❌ Failed to get recipes:", error);
       throw error;
@@ -234,7 +237,7 @@ class BackendService {
   }
 }
 
-// src/lib/debug_console.ts
+// bun/src/lib/debug_console.ts
 class DebugConsole {
   messages = [];
   maxMessages = 100;
@@ -366,7 +369,7 @@ ${rows}`;
 }
 var debugConsole = new DebugConsole;
 
-// src/lib/polymarket.ts
+// bun/src/lib/polymarket.ts
 function formatVolume(volume) {
   if (volume >= 1e6) {
     return `$${(volume / 1e6).toFixed(1)}M`;
@@ -377,7 +380,7 @@ function formatVolume(volume) {
   return `$${volume.toFixed(0)}`;
 }
 
-// src/lib/ui_builder.ts
+// bun/src/lib/ui_builder.ts
 class UIBuilder {
   static buildApp() {
     const container = document.createElement("div");
@@ -976,70 +979,72 @@ class UIBuilder {
     pageContent.className = "page-content";
     pageContent.innerHTML = `
             <div class="receipts-container">
-                <!-- Filters Panel -->
-                <div class="receipts-filters">
-                    <h3>\uD83D\uDD0D Filter Transactions</h3>
-                    
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <label for="filterAccount">Account:</label>
-                            <select id="filterAccount" class="filter-select">
-                                <option value="">All Accounts</option>
-                            </select>
-                        </div>
+                <!-- Top Row: Filters + Stats -->
+                <div class="receipts-top-row">
+                    <!-- Filters Panel -->
+                    <div class="receipts-filters">
+                        <h3>\uD83D\uDD0D Filters</h3>
                         
-                        <div class="filter-group">
-                            <label for="filterType">Transaction Type:</label>
-                            <select id="filterType" class="filter-select">
-                                <option value="">All Types</option>
-                                <option value="transfer">Transfer</option>
-                                <option value="market_bet">Market Bet</option>
-                                <option value="market_payout">Payout</option>
-                                <option value="admin_deposit">Admin Deposit</option>
-                            </select>
+                        <div class="filter-row">
+                            <div class="filter-group">
+                                <label for="filterAccount">Account:</label>
+                                <select id="filterAccount" class="filter-select">
+                                    <option value="">All</option>
+                                </select>
+                            </div>
+                            
+                            <div class="filter-group">
+                                <label for="filterType">Type:</label>
+                                <select id="filterType" class="filter-select">
+                                    <option value="">All</option>
+                                    <option value="bet_placed">Bet</option>
+                                    <option value="transfer">Transfer</option>
+                                    <option value="deposit">Deposit</option>
+                                </select>
+                            </div>
+                            
+                            <div class="filter-group">
+                                <label for="searchAmount">Min (BB):</label>
+                                <input type="number" id="searchAmount" class="filter-input" placeholder="0" min="0" step="1">
+                            </div>
+                            
+                            <button class="filter-btn" id="applyFiltersBtn">Apply</button>
+                            <button class="reset-btn" id="resetFiltersBtn">Reset</button>
                         </div>
-                        
-                        <div class="filter-group">
-                            <label for="searchAmount">Min Amount (BB):</label>
-                            <input type="number" id="searchAmount" class="filter-input" placeholder="0" min="0" step="1">
-                        </div>
-                        
-                        <button class="filter-btn" id="applyFiltersBtn">Apply Filters</button>
-                        <button class="reset-btn" id="resetFiltersBtn">Reset</button>
                     </div>
-                </div>
 
-                <!-- Stats Summary -->
-                <div class="receipts-stats">
-                    <div class="stat-card">
-                        <div class="stat-icon">\uD83D\uDCCA</div>
-                        <div class="stat-content">
-                            <div class="stat-label">Total Transactions</div>
-                            <div class="stat-value" id="totalTransactions">0</div>
+                    <!-- Stats Summary -->
+                    <div class="receipts-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon">\uD83D\uDCCA</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Total</div>
+                                <div class="stat-value" id="totalRecipes">0</div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon">\uD83D\uDCB0</div>
-                        <div class="stat-content">
-                            <div class="stat-label">Total Volume</div>
-                            <div class="stat-value" id="totalVolume">0 BB</div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">\uD83D\uDCB0</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Volume</div>
+                                <div class="stat-value" id="totalVolume">0 BB</div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon">\uD83C\uDFAF</div>
-                        <div class="stat-content">
-                            <div class="stat-label">Market Bets</div>
-                            <div class="stat-value" id="totalBets">0</div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">\uD83C\uDFAF</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Bets</div>
+                                <div class="stat-value" id="totalBets">0</div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon">\uD83D\uDD04</div>
-                        <div class="stat-content">
-                            <div class="stat-label">Transfers</div>
-                            <div class="stat-value" id="totalTransfers">0</div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">\uD83D\uDD04</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Transfers</div>
+                                <div class="stat-value" id="totalTransfers">0</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1130,7 +1135,7 @@ class UIBuilder {
   }
 }
 
-// src/lib/transfers.ts
+// bun/src/lib/transfers.ts
 class TransfersModule {
   static accounts = [];
   static onTransferComplete = null;
@@ -1634,7 +1639,7 @@ class TransfersModule {
 }
 var transfers_default = TransfersModule;
 
-// src/lib/price_action.ts
+// bun/src/lib/price_action.ts
 class PriceActionModule {
   activeBets = new Map;
   currentPrices = { btc: 0, sol: 0 };
@@ -1937,7 +1942,7 @@ class PriceActionModule {
 }
 var price_action_default = new PriceActionModule;
 
-// src/main.ts
+// bun/src/main.ts
 var selectedAccount = null;
 var accounts = [];
 var markets = [];
@@ -2125,10 +2130,10 @@ function showBettingModal(marketId, marketTitle, option, account) {
                             step="0.01"
                         />
                         <div class="betting-quick-amounts">
-                            <button class="betting-quick-btn" data-amount="10">10 BB</button>
-                            <button class="betting-quick-btn" data-amount="50">50 BB</button>
-                            <button class="betting-quick-btn" data-amount="100">100 BB</button>
-                            <button class="betting-quick-btn" data-amount="${balance}">MAX</button>
+                            <button type="button" class="betting-quick-btn" data-amount="10">10 BB</button>
+                            <button type="button" class="betting-quick-btn" data-amount="50">50 BB</button>
+                            <button type="button" class="betting-quick-btn" data-amount="100">100 BB</button>
+                            <button type="button" class="betting-quick-btn" data-amount="${balance}">MAX</button>
                         </div>
                         <div id="betAmountError" class="betting-amount-error" style="display: none;"></div>
                     </div>
@@ -2379,45 +2384,55 @@ function displayRecipes(recipes) {
   if (totalCountEl)
     totalCountEl.textContent = allRecipes.length.toString();
   if (recipes.length === 0) {
-    receiptsList.innerHTML = '<p class="empty-state">No ledger entries found. Try adjusting your filters.</p>';
+    receiptsList.innerHTML = '<p class="empty-state">\uD83D\uDCCB No ledger entries found. All blockchain activity will appear here.</p>';
     return;
   }
   const sortedRecipes = [...recipes].sort((a, b) => b.timestamp - a.timestamp);
-  receiptsList.innerHTML = sortedRecipes.map((recipe) => {
+  let ledgerHTML = '<div class="blockchain-ledger">';
+  ledgerHTML += '<div class="ledger-header">\uD83D\uDCE1 Blockchain Transaction Ledger</div>';
+  sortedRecipes.forEach((recipe) => {
     const date = new Date(recipe.timestamp * 1000);
-    const formattedDate = date.toLocaleDateString();
-    const formattedTime = date.toLocaleTimeString();
-    const typeInfo = getRecipeTypeInfo(recipe.recipe_type);
-    return `
-            <div class="recipe-item" data-recipe-id="${recipe.id}">
-                <div class="recipe-icon ${typeInfo.color}">${typeInfo.icon}</div>
-                <div class="recipe-content">
-                    <div class="recipe-header">
-                        <span class="recipe-type-badge ${recipe.recipe_type}">${typeInfo.label}</span>
-                        <span class="recipe-amount ${recipe.amount >= 0 ? "positive" : "negative"}">${recipe.amount >= 0 ? "+" : ""}${recipe.amount.toFixed(2)} BB</span>
-                    </div>
-                    <div class="recipe-description">${recipe.description}</div>
-                    <div class="recipe-meta">
-                        <span class="recipe-account">\uD83D\uDC64 ${recipe.account}</span>
-                        ${recipe.related_id ? `<span class="recipe-related">\uD83D\uDD17 ${recipe.related_id.substring(0, 12)}...</span>` : ""}
-                        <span class="recipe-timestamp">\uD83D\uDCC5 ${formattedDate} ${formattedTime}</span>
-                    </div>
-                </div>
+    const timeStr = date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+    let icon = "\uD83D\uDCDD";
+    let action = recipe.recipe_type.toUpperCase().replace(/_/g, " ");
+    let details = "";
+    if (recipe.recipe_type === "bet_placed") {
+      icon = "\uD83C\uDFB2";
+      action = "BET_PLACED";
+      const marketMatch = recipe.description.match(/on market (.+)/);
+      const marketName = marketMatch ? marketMatch[1] : "Unknown Market";
+      details = `${recipe.account} bet ${Math.abs(recipe.amount)} BB on "${marketName}"`;
+    } else if (recipe.recipe_type === "transfer") {
+      icon = "\uD83D\uDCB8";
+      action = "TRANSFER";
+      details = recipe.description;
+    } else if (recipe.recipe_type === "deposit") {
+      icon = "\uD83D\uDCB0";
+      action = "DEPOSIT";
+      details = `${recipe.account} deposited ${recipe.amount} BB`;
+    } else if (recipe.recipe_type === "withdrawal") {
+      icon = "\uD83C\uDFE7";
+      action = "WITHDRAWAL";
+      details = `${recipe.account} withdrew ${Math.abs(recipe.amount)} BB`;
+    } else if (recipe.metadata && recipe.metadata.tx_type === "mint") {
+      icon = "\uD83E\uDE99";
+      action = "TOKENS_MINTED";
+      details = `Account: ${recipe.account} | Minted: ${recipe.amount} BB`;
+    } else {
+      details = recipe.description;
+    }
+    ledgerHTML += `
+            <div class="ledger-entry">
+                <span class="ledger-time">[${timeStr}]</span>
+                <span class="ledger-icon">${icon}</span>
+                <span class="ledger-action">${action}</span>
+                <span class="ledger-separator">|</span>
+                <span class="ledger-details">${details}</span>
             </div>
         `;
-  }).join("");
-}
-function getRecipeTypeInfo(type) {
-  const typeMap = {
-    bet_placed: { icon: "\uD83C\uDFAF", label: "Bet Placed", color: "bet" },
-    bet_win: { icon: "\uD83C\uDFC6", label: "Bet Won", color: "win" },
-    bet_loss: { icon: "❌", label: "Bet Lost", color: "loss" },
-    market_payout: { icon: "\uD83D\uDCB0", label: "Payout", color: "payout" },
-    transfer: { icon: "\uD83D\uDD04", label: "Transfer", color: "transfer" },
-    deposit: { icon: "\uD83D\uDCB5", label: "Deposit", color: "deposit" },
-    admin_action: { icon: "⚙️", label: "Admin", color: "admin" }
-  };
-  return typeMap[type] || { icon: "\uD83D\uDCCB", label: type, color: "default" };
+  });
+  ledgerHTML += "</div>";
+  receiptsList.innerHTML = ledgerHTML;
 }
 function populateReceiptsFilters() {
   const filterAccount = document.getElementById("filterAccount");

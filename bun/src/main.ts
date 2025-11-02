@@ -262,10 +262,10 @@ function showBettingModal(marketId: string, marketTitle: string, option: string,
                             step="0.01"
                         />
                         <div class="betting-quick-amounts">
-                            <button class="betting-quick-btn" data-amount="10">10 BB</button>
-                            <button class="betting-quick-btn" data-amount="50">50 BB</button>
-                            <button class="betting-quick-btn" data-amount="100">100 BB</button>
-                            <button class="betting-quick-btn" data-amount="${balance}">MAX</button>
+                            <button type="button" class="betting-quick-btn" data-amount="10">10 BB</button>
+                            <button type="button" class="betting-quick-btn" data-amount="50">50 BB</button>
+                            <button type="button" class="betting-quick-btn" data-amount="100">100 BB</button>
+                            <button type="button" class="betting-quick-btn" data-amount="${balance}">MAX</button>
                         </div>
                         <div id="betAmountError" class="betting-amount-error" style="display: none;"></div>
                     </div>
@@ -587,39 +587,67 @@ function displayRecipes(recipes: Recipe[]) {
     if (totalCountEl) totalCountEl.textContent = allRecipes.length.toString();
     
     if (recipes.length === 0) {
-        receiptsList.innerHTML = '<p class="empty-state">No ledger entries found. Try adjusting your filters.</p>';
+        receiptsList.innerHTML = '<p class="empty-state">📋 No ledger entries found. All blockchain activity will appear here.</p>';
         return;
     }
     
     // Sort by timestamp (newest first)
     const sortedRecipes = [...recipes].sort((a, b) => b.timestamp - a.timestamp);
     
-    receiptsList.innerHTML = sortedRecipes.map(recipe => {
+    // Create ledger-style display
+    let ledgerHTML = '<div class="blockchain-ledger">';
+    ledgerHTML += '<div class="ledger-header">📡 Blockchain Transaction Ledger</div>';
+    
+    sortedRecipes.forEach(recipe => {
         const date = new Date(recipe.timestamp * 1000);
-        const formattedDate = date.toLocaleDateString();
-        const formattedTime = date.toLocaleTimeString();
+        const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
         
-        // Get icon and color based on recipe type
-        const typeInfo = getRecipeTypeInfo(recipe.recipe_type);
+        // Get icon and format based on recipe type
+        let icon = '📝';
+        let action = recipe.recipe_type.toUpperCase().replace(/_/g, ' ');
+        let details = '';
         
-        return `
-            <div class="recipe-item" data-recipe-id="${recipe.id}">
-                <div class="recipe-icon ${typeInfo.color}">${typeInfo.icon}</div>
-                <div class="recipe-content">
-                    <div class="recipe-header">
-                        <span class="recipe-type-badge ${recipe.recipe_type}">${typeInfo.label}</span>
-                        <span class="recipe-amount ${recipe.amount >= 0 ? 'positive' : 'negative'}">${recipe.amount >= 0 ? '+' : ''}${recipe.amount.toFixed(2)} BB</span>
-                    </div>
-                    <div class="recipe-description">${recipe.description}</div>
-                    <div class="recipe-meta">
-                        <span class="recipe-account">👤 ${recipe.account}</span>
-                        ${recipe.related_id ? `<span class="recipe-related">🔗 ${recipe.related_id.substring(0, 12)}...</span>` : ''}
-                        <span class="recipe-timestamp">📅 ${formattedDate} ${formattedTime}</span>
-                    </div>
-                </div>
+        if (recipe.recipe_type === 'bet_placed') {
+            icon = '🎲';
+            action = 'BET_PLACED';
+            // Extract market name from description if possible
+            const marketMatch = recipe.description.match(/on market (.+)/);
+            const marketName = marketMatch ? marketMatch[1] : 'Unknown Market';
+            details = `${recipe.account} bet ${Math.abs(recipe.amount)} BB on "${marketName}"`;
+        } else if (recipe.recipe_type === 'transfer') {
+            icon = '💸';
+            action = 'TRANSFER';
+            details = recipe.description;
+        } else if (recipe.recipe_type === 'deposit') {
+            icon = '💰';
+            action = 'DEPOSIT';
+            details = `${recipe.account} deposited ${recipe.amount} BB`;
+        } else if (recipe.recipe_type === 'withdrawal') {
+            icon = '🏧';
+            action = 'WITHDRAWAL';
+            details = `${recipe.account} withdrew ${Math.abs(recipe.amount)} BB`;
+        } else if (recipe.metadata && recipe.metadata.tx_type === 'mint') {
+            icon = '🪙';
+            action = 'TOKENS_MINTED';
+            details = `Account: ${recipe.account} | Minted: ${recipe.amount} BB`;
+        } else {
+            // Generic format
+            details = recipe.description;
+        }
+        
+        ledgerHTML += `
+            <div class="ledger-entry">
+                <span class="ledger-time">[${timeStr}]</span>
+                <span class="ledger-icon">${icon}</span>
+                <span class="ledger-action">${action}</span>
+                <span class="ledger-separator">|</span>
+                <span class="ledger-details">${details}</span>
             </div>
         `;
-    }).join('');
+    });
+    
+    ledgerHTML += '</div>';
+    receiptsList.innerHTML = ledgerHTML;
 }
 
 function getRecipeTypeInfo(type: string): {icon: string, label: string, color: string} {

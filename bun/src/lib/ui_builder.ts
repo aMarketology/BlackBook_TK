@@ -709,70 +709,72 @@ static buildMainContent(): HTMLElement {
         pageContent.className = 'page-content';
         pageContent.innerHTML = `
             <div class="receipts-container">
-                <!-- Filters Panel -->
-                <div class="receipts-filters">
-                    <h3>🔍 Filter Transactions</h3>
-                    
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <label for="filterAccount">Account:</label>
-                            <select id="filterAccount" class="filter-select">
-                                <option value="">All Accounts</option>
-                            </select>
-                        </div>
+                <!-- Top Row: Filters + Stats -->
+                <div class="receipts-top-row">
+                    <!-- Filters Panel -->
+                    <div class="receipts-filters">
+                        <h3>🔍 Filters</h3>
                         
-                        <div class="filter-group">
-                            <label for="filterType">Transaction Type:</label>
-                            <select id="filterType" class="filter-select">
-                                <option value="">All Types</option>
-                                <option value="transfer">Transfer</option>
-                                <option value="market_bet">Market Bet</option>
-                                <option value="market_payout">Payout</option>
-                                <option value="admin_deposit">Admin Deposit</option>
-                            </select>
+                        <div class="filter-row">
+                            <div class="filter-group">
+                                <label for="filterAccount">Account:</label>
+                                <select id="filterAccount" class="filter-select">
+                                    <option value="">All</option>
+                                </select>
+                            </div>
+                            
+                            <div class="filter-group">
+                                <label for="filterType">Type:</label>
+                                <select id="filterType" class="filter-select">
+                                    <option value="">All</option>
+                                    <option value="bet_placed">Bet</option>
+                                    <option value="transfer">Transfer</option>
+                                    <option value="deposit">Deposit</option>
+                                </select>
+                            </div>
+                            
+                            <div class="filter-group">
+                                <label for="searchAmount">Min (BB):</label>
+                                <input type="number" id="searchAmount" class="filter-input" placeholder="0" min="0" step="1">
+                            </div>
+                            
+                            <button class="filter-btn" id="applyFiltersBtn">Apply</button>
+                            <button class="reset-btn" id="resetFiltersBtn">Reset</button>
                         </div>
-                        
-                        <div class="filter-group">
-                            <label for="searchAmount">Min Amount (BB):</label>
-                            <input type="number" id="searchAmount" class="filter-input" placeholder="0" min="0" step="1">
-                        </div>
-                        
-                        <button class="filter-btn" id="applyFiltersBtn">Apply Filters</button>
-                        <button class="reset-btn" id="resetFiltersBtn">Reset</button>
                     </div>
-                </div>
 
-                <!-- Stats Summary -->
-                <div class="receipts-stats">
-                    <div class="stat-card">
-                        <div class="stat-icon">📊</div>
-                        <div class="stat-content">
-                            <div class="stat-label">Total Transactions</div>
-                            <div class="stat-value" id="totalTransactions">0</div>
+                    <!-- Stats Summary -->
+                    <div class="receipts-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon">📊</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Total</div>
+                                <div class="stat-value" id="totalRecipes">0</div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon">💰</div>
-                        <div class="stat-content">
-                            <div class="stat-label">Total Volume</div>
-                            <div class="stat-value" id="totalVolume">0 BB</div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">💰</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Volume</div>
+                                <div class="stat-value" id="totalVolume">0 BB</div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon">🎯</div>
-                        <div class="stat-content">
-                            <div class="stat-label">Market Bets</div>
-                            <div class="stat-value" id="totalBets">0</div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">🎯</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Bets</div>
+                                <div class="stat-value" id="totalBets">0</div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon">🔄</div>
-                        <div class="stat-content">
-                            <div class="stat-label">Transfers</div>
-                            <div class="stat-value" id="totalTransfers">0</div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">🔄</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Transfers</div>
+                                <div class="stat-value" id="totalTransfers">0</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -791,8 +793,7 @@ static buildMainContent(): HTMLElement {
                     </div>
                 </div>
             </div>
-        `;
-        
+        `;        
         page.appendChild(pageContent);
         return page;
     }

@@ -17,14 +17,14 @@
       <title><![CDATA[🏆 Who will win the 2026 FIFA World Cup?]]></title>
       <description><![CDATA[Which national team will win the 2026 FIFA World Cup tournament held in USA, Canada, and Mexico? The tournament will run from June 12 to July 12, 2026. This market resolves to the winner of the final match.]]></description>
       <link>https://www.fifa.com/tournaments/mens-world-cup</link>
-      <guid isPermaLink="false">market_2026_world_cup</guid>
+      <guid isPermaLink="false">sports_world_cup_2026</guid>
       <pubDate>Fri, 01 Nov 2025 14:30:00 +0000</pubDate>
       <category>Sports</category>
       <source url="https://www.fifa.com"><![CDATA[FIFA Official]]></source>
       <confidence>0.85</confidence>
       <addedToLedger>true</addedToLedger>
-      <marketId>market_2026_world_cup</marketId>
-      <marketUrl>http://localhost:3000/markets/market_2026_world_cup</marketUrl>
+      <marketId>sports_world_cup_2026</marketId>
+      <marketUrl>http://localhost:3000/markets/sports_world_cup_2026</marketUrl>
       <options>
         <option><![CDATA[Argentina]]></option>
         <option><![CDATA[France]]></option>

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 use tauri::State;
 use blackbook_prediction_market::ledger::{Ledger, Recipe, Transaction};
 use blackbook_prediction_market::markets::{Market, Bet};
@@ -61,17 +62,33 @@ pub struct AccountInfo {
 
 /// Get all accounts with their addresses and balances
 #[tauri::command]
-pub fn get_accounts(state: State<AppState>) -> Result<Vec<AccountInfo>, String> {
-    let ledger = state.lock().map_err(|e| e.to_string())?;
+pub async fn get_accounts(_state: State<'_, AppState>) -> Result<Vec<AccountInfo>, String> {
+    // Proxy to HTTP blockchain API to get real account data
+    let client = reqwest::Client::new();
+    let response = client
+        .get("http://localhost:3000/accounts")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch accounts from blockchain: {}", e))?;
     
+    if !response.status().is_success() {
+        return Err(format!("HTTP error: {}", response.status()));
+    }
+    
+    let json: serde_json::Value = response.json().await
+        .map_err(|e| format!("Failed to parse response: {}", e))?;
+    
+    // Extract accounts array from response
+    let accounts_array = json["accounts"].as_array()
+        .ok_or("No accounts array in response")?;
+    
+    // Convert to AccountInfo format
     let mut accounts = Vec::new();
-    
-    for (name, address) in &ledger.accounts {
-        let balance = ledger.get_balance(name);
+    for acc in accounts_array {
         accounts.push(AccountInfo {
-            name: name.clone(),
-            address: address.clone(),
-            balance,
+            name: acc["name"].as_str().unwrap_or("").to_string(),
+            address: acc["address"].as_str().unwrap_or("").to_string(),
+            balance: acc["balance"].as_f64().unwrap_or(0.0),
         });
     }
     
@@ -83,12 +100,115 @@ pub fn get_accounts(state: State<AppState>) -> Result<Vec<AccountInfo>, String> 
 
 /// Get balance for a specific account
 #[tauri::command]
-pub fn get_balance(address: String, state: State<AppState>) -> Result<f64, String> {
-    let ledger = state.lock().map_err(|e| e.to_string())?;
-    Ok(ledger.get_balance(&address))
+pub async fn get_balance(address: String, _state: State<'_, AppState>) -> Result<f64, String> {
+    // Proxy to HTTP blockchain API to get real balance
+    let client = reqwest::Client::new();
+    let url = format!("http://localhost:3000/balance/{}", address);
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch balance from blockchain: {}", e))?;
+    
+    if !response.status().is_success() {
+        return Err(format!("HTTP error: {}", response.status()));
+    }
+    
+    let json: serde_json::Value = response.json().await
+        .map_err(|e| format!("Failed to parse response: {}", e))?;
+    
+    Ok(json["balance"].as_f64().unwrap_or(0.0))
 }
 
-/// Place a bet on a market - PROXIES TO BLOCKCHAIN CORE HTTP API
+/// Helper function to convert blockchain transaction JSON to Recipe format
+fn transaction_to_recipe(tx: &serde_json::Value) -> Option<Recipe> {
+    // Extract fields from transaction JSON (matching actual blockchain structure)
+    let tx_type = tx["tx_type"].as_str()?.to_string();
+    let from_account = tx["from"].as_str().unwrap_or("").to_string();
+    let to_account = tx["to"].as_str().unwrap_or("").to_string();
+    let amount = tx["amount"].as_f64().unwrap_or(0.0);
+    let timestamp = tx["timestamp"].as_u64().unwrap_or(0);
+    
+    // Generate ID from timestamp if not provided
+    let id = tx["id"].as_str()
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| format!("tx_{}", timestamp));
+    
+    // Determine recipe type and primary account
+    let (recipe_type, account, description) = match tx_type.as_str() {
+        "bet" => {
+            // Extract market ID from the "to" field (e.g., "market_sports_world_cup_2026")
+            let market_id = to_account.strip_prefix("market_").unwrap_or(&to_account);
+            (
+                "bet_placed".to_string(),
+                from_account.clone(),
+                format!("Bet {} BB on market {}", amount, market_id)
+            )
+        },
+        "transfer" => {
+            (
+                "transfer".to_string(),
+                from_account.clone(),
+                format!("Transfer {} BB from {} to {}", amount, from_account, to_account)
+            )
+        },
+        "deposit" => {
+            (
+                "deposit".to_string(),
+                to_account.clone(),
+                format!("Deposit {} BB to {}", amount, to_account)
+            )
+        },
+        "withdrawal" => {
+            (
+                "withdrawal".to_string(),
+                from_account.clone(),
+                format!("Withdrawal {} BB from {}", amount, from_account)
+            )
+        },
+        _ => {
+            (
+                tx_type.to_lowercase(),
+                from_account.clone(),
+                format!("{} - {} BB", tx_type, amount)
+            )
+        }
+    };
+    
+    // Get address (L1_XXX format) - use from_account primarily
+    let address = if !from_account.is_empty() {
+        from_account.clone()
+    } else {
+        to_account.clone()
+    };
+    
+    // Build metadata from transaction details
+    let mut metadata = HashMap::new();
+    metadata.insert("tx_type".to_string(), tx_type.clone());
+    metadata.insert("from".to_string(), from_account.clone());
+    metadata.insert("to".to_string(), to_account.clone());
+    
+    // Extract market ID from "to" field if it's a bet
+    let related_id = if tx_type == "bet" {
+        Some(to_account.clone())
+    } else {
+        None
+    };
+    
+    Some(Recipe {
+        id,
+        recipe_type,
+        account: account.clone(),
+        address,
+        amount,
+        description,
+        related_id,
+        timestamp,
+        metadata,
+    })
+}
+
+/// Place a bet on a market - PROXIES TO BLOCKCHAIN CORE HTTP API/// Place a bet on a market - PROXIES TO BLOCKCHAIN CORE HTTP API
 #[tauri::command]
 pub async fn place_bet(req: BetRequest, _state: State<'_, AppState>) -> Result<String, String> {
     let timestamp = chrono::Local::now().format("%H:%M:%S");
@@ -247,9 +367,35 @@ pub fn get_account_transactions(address: String, state: State<AppState>) -> Resu
 
 /// Get all activity recipes
 #[tauri::command]
-pub fn get_recipes(state: State<AppState>) -> Result<Vec<Recipe>, String> {
-    let ledger = state.lock().map_err(|e| e.to_string())?;
-    Ok(ledger.get_recipes_sorted())
+pub async fn get_recipes(_state: State<'_, AppState>) -> Result<Vec<Recipe>, String> {
+    // Proxy to HTTP blockchain API to get real transaction data
+    let client = reqwest::Client::new();
+    let response = client
+        .get("http://localhost:3000/transactions")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch recipes from blockchain: {}", e))?;
+    
+    if !response.status().is_success() {
+        return Err(format!("HTTP error: {}", response.status()));
+    }
+    
+    let json: serde_json::Value = response.json().await
+        .map_err(|e| format!("Failed to parse response: {}", e))?;
+    
+    // Extract transactions array from response
+    let transactions = json["transactions"].as_array()
+        .ok_or("No transactions array in response")?;
+    
+    // Convert blockchain transactions to Recipe format
+    let mut recipes = Vec::new();
+    for tx in transactions {
+        if let Some(recipe) = transaction_to_recipe(tx) {
+            recipes.push(recipe);
+        }
+    }
+    
+    Ok(recipes)
 }
 
 /// Get recipes for a specific account
@@ -696,23 +842,51 @@ pub fn get_all_markets(state: State<AppState>) -> Result<Vec<Market>, String> {
 // ADMIN COMMANDS
 // ============================================
 
-/// Admin command to mint tokens and add them to an account
+/// Admin command to mint tokens and add them to an account - PROXIES TO BLOCKCHAIN CORE HTTP API
 #[tauri::command]
-pub fn admin_mint_tokens(account: String, amount: f64, state: State<AppState>) -> Result<String, String> {
-    let mut ledger = state.lock().map_err(|e| e.to_string())?;
+pub async fn admin_mint_tokens(account: String, amount: f64, _state: State<'_, AppState>) -> Result<String, String> {
+    let timestamp = chrono::Local::now().format("%H:%M:%S");
+    println!("[{}] 🎯 IPC→HTTP | admin_mint_tokens called | Account: {}, Amount: {} BB", 
+        timestamp, account, amount);
     
-    let old_balance = ledger.get_balance(&account);
-    let result = ledger.admin_mint_tokens(&account, amount);
+    // Call blockchain core HTTP API
+    let client = reqwest::Client::new();
+    let url = "http://localhost:3000/admin/mint";
     
-    // Log blockchain activity
-    if let Ok(ref tx_id) = result {
-        let new_balance = ledger.get_balance(&account);
+    let payload = serde_json::json!({
+        "account": account,
+        "amount": amount
+    });
+    
+    println!("[{}] 📤 HTTP POST {} | Payload: {}", timestamp, url, payload);
+    
+    let response = client.post(url)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to connect to blockchain: {}", e))?;
+    
+    let timestamp = chrono::Local::now().format("%H:%M:%S");
+    println!("[{}] 📥 HTTP Response Status: {}", timestamp, response.status());
+    
+    if response.status().is_success() {
+        let result: serde_json::Value = response.json()
+            .await
+            .map_err(|e| format!("Failed to parse response: {}", e))?;
+        
+        let new_balance = result["new_balance"].as_f64().unwrap_or(0.0);
+        let message = format!("Successfully minted {} BB to {}. New balance: {} BB", amount, account, new_balance);
+        
         let timestamp = chrono::Local::now().format("%H:%M:%S");
-        println!("[{}] 🪙 TOKENS_MINTED | Account: {} | Minted: {} BB | Old Balance: {} BB | New Balance: {} BB | TX: {}", 
-            timestamp, account, amount, old_balance, new_balance, tx_id);
-        Ok(format!("Successfully minted {} BB to {}. New balance: {} BB", amount, account, new_balance))
+        println!("[{}] ✅ BLOCKCHAIN_VERIFIED | Mint completed via HTTP API | New Balance: {} BB", 
+            timestamp, new_balance);
+        
+        Ok(message)
     } else {
-        result
+        let error = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let timestamp = chrono::Local::now().format("%H:%M:%S");
+        println!("[{}] ❌ BLOCKCHAIN_REJECTED | {}", timestamp, error);
+        Err(error)
     }
 }
 

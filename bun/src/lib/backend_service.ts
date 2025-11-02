@@ -146,7 +146,10 @@ export class BackendService {
      */
     static async getRecipes(): Promise<any[]> {
         try {
-            return await invoke('get_recipes') as any[];
+            console.log('📋 BackendService.getRecipes() - Calling Tauri IPC get_recipes...');
+            const result = await invoke('get_recipes') as any[];
+            console.log(`📋 BackendService.getRecipes() - Received ${result.length} recipes from Tauri:`, result);
+            return result;
         } catch (error) {
             console.error('❌ Failed to get recipes:', error);
             throw error;

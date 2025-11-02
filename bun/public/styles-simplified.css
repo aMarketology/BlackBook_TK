@@ -2390,3 +2390,282 @@ html, body {
     }
 }
 
+/* ============================================
+   BLOCKCHAIN LEDGER DISPLAY
+   ============================================ */
+
+.blockchain-ledger {
+    background: rgba(10, 10, 10, 0.6);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 20px;
+    font-family: 'Noto Sans Mono', 'Courier New', monospace;
+    backdrop-filter: blur(5px);
+}
+
+.ledger-header {
+    font-size: 16px;
+    font-weight: 700;
+    color: #8B0000;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid rgba(139, 0, 0, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.ledger-entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.85);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background-color 0.2s ease;
+}
+
+.ledger-entry:hover {
+    background-color: rgba(139, 0, 0, 0.1);
+}
+
+.ledger-entry:last-child {
+    border-bottom: none;
+}
+
+.ledger-time {
+    color: rgba(139, 0, 0, 0.8);
+    font-weight: 600;
+    min-width: 80px;
+}
+
+.ledger-icon {
+    font-size: 16px;
+    min-width: 25px;
+    text-align: center;
+}
+
+.ledger-action {
+    color: #8B0000;
+    font-weight: 700;
+    min-width: 120px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ledger-separator {
+    color: rgba(139, 0, 0, 0.5);
+    font-weight: 300;
+}
+
+.ledger-details {
+    flex: 1;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* Empty state for ledger */
+.blockchain-ledger .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+}
+
+/* ============================================
+   RECEIPTS PAGE LAYOUT
+   ============================================ */
+
+.receipts-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.receipts-top-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.receipts-filters {
+    flex: 1;
+    background: rgba(10, 10, 10, 0.6);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    backdrop-filter: blur(5px);
+}
+
+.receipts-filters h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #8B0000;
+    margin: 0 0 12px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.filter-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-group label {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.filter-select,
+.filter-input {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    min-width: 100px;
+}
+
+.filter-select:focus,
+.filter-input:focus {
+    outline: none;
+    border-color: #8B0000;
+}
+
+.filter-btn,
+.reset-btn {
+    padding: 6px 15px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid;
+}
+
+.filter-btn {
+    background: #8B0000;
+    color: #fff;
+    border-color: #8B0000;
+}
+
+.filter-btn:hover {
+    background: #A52A2A;
+}
+
+.reset-btn {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.reset-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.receipts-stats {
+    display: flex;
+    gap: 15px;
+}
+
+.stat-card {
+    background: rgba(10, 10, 10, 0.6);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 12px 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 120px;
+    backdrop-filter: blur(5px);
+}
+
+.stat-icon {
+    font-size: 24px;
+}
+
+.stat-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.stat-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    font-size: 16px;
+    color: #8B0000;
+    font-weight: 700;
+}
+
+.receipts-list-panel {
+    background: rgba(10, 10, 10, 0.6);
+    border: 1px solid rgba(139, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 20px;
+    backdrop-filter: blur(5px);
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid rgba(139, 0, 0, 0.3);
+}
+
+.panel-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #8B0000;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.results-count {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.receipts-list {
+    min-height: 200px;
+}
+
+.loading {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    padding: 40px;
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .receipts-top-row {
+        flex-direction: column;
+    }
+    
+    .receipts-stats {
+        flex-wrap: wrap;
+    }
+}
