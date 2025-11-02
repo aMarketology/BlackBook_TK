@@ -125,7 +125,12 @@ class BackendService {
   static async placeBet(marketId, account, amount, prediction) {
     try {
       return await invoke("place_bet", {
-        req: { marketId, account, amount, prediction }
+        req: {
+          market_id: marketId,
+          account,
+          amount,
+          prediction
+        }
       });
     } catch (error) {
       console.error("❌ Bet placement failed:", error);
@@ -201,6 +206,24 @@ class BackendService {
       return result;
     } catch (error) {
       console.error("❌ Admin set balance failed:", error);
+      throw error;
+    }
+  }
+  static async getUserBets(account) {
+    try {
+      console.log(`\uD83D\uDCCA Fetching bets for ${account}...`);
+      return await invoke("get_user_bets", { account });
+    } catch (error) {
+      console.error("❌ Failed to get user bets:", error);
+      throw error;
+    }
+  }
+  static async getAllMarkets() {
+    try {
+      console.log("\uD83D\uDCCA Fetching all markets...");
+      return await invoke("get_all_markets");
+    } catch (error) {
+      console.error("❌ Failed to get all markets:", error);
       throw error;
     }
   }
@@ -405,10 +428,6 @@ class UIBuilder {
     tokenBadge.className = "badge";
     tokenBadge.textContent = "\uD83D\uDC8E BB Token";
     networkInfo.appendChild(tokenBadge);
-    const accountsBadge = document.createElement("span");
-    accountsBadge.className = "badge";
-    accountsBadge.textContent = "\uD83D\uDCCA 8 Accounts";
-    networkInfo.appendChild(accountsBadge);
     const transfersBtn = document.createElement("button");
     transfersBtn.className = "badge badge-button";
     transfersBtn.id = "transfersBtn";
@@ -524,17 +543,40 @@ class UIBuilder {
     pageHeader.className = "page-header";
     pageHeader.innerHTML = `
             <button class="back-btn" id="backBtn">← Back to Markets</button>
-            <h2>\uD83D\uDD04 Admin Transfer Panel</h2>
-            <p class="page-subtitle">Transfer BlackBook tokens between accounts</p>
+            <h2>� Token Management</h2>
+            <p class="page-subtitle">Transfer tokens, manage balances, and view blockchain activity</p>
         `;
     page.appendChild(pageHeader);
+    const tabNav = document.createElement("div");
+    tabNav.className = "tab-nav";
+    tabNav.innerHTML = `
+            <button class="tab-btn active" id="transferTab">
+                <span class="tab-icon">\uD83D\uDD04</span>
+                <span class="tab-label">Transfers</span>
+            </button>
+            <button class="tab-btn" id="adminTab">
+                <span class="tab-icon">\uD83D\uDD10</span>
+                <span class="tab-label">Admin Panel</span>
+            </button>
+            <button class="tab-btn" id="quickActionsTab">
+                <span class="tab-icon">⚡</span>
+                <span class="tab-label">Quick Actions</span>
+            </button>
+        `;
+    page.appendChild(tabNav);
     const pageContent = document.createElement("div");
     pageContent.className = "page-content";
-    pageContent.innerHTML = `
+    const transferTabContent = document.createElement("div");
+    transferTabContent.id = "transferTabContent";
+    transferTabContent.className = "tab-content active";
+    transferTabContent.innerHTML = `
             <div class="transfer-container">
                 <!-- Transfer Form Card -->
                 <div class="transfer-card">
-                    <h3>\uD83D\uDCB8 Transfer Tokens</h3>
+                    <div class="card-header">
+                        <h3>\uD83D\uDCB8 Transfer Tokens</h3>
+                        <span class="card-badge">Standard Transfer</span>
+                    </div>
                     
                     <div class="form-group">
                         <label for="transferFrom">
@@ -579,14 +621,180 @@ class UIBuilder {
                 </div>
                 
                 <!-- Quick Transfer Templates -->
-                <div class="quick-actions">
-                    <h4>⚡ Quick Actions</h4>
-                    <button class="quick-btn" id="quickTransfer50">Transfer 50 BB</button>
-                    <button class="quick-btn" id="quickTransfer100">Transfer 100 BB</button>
-                    <button class="quick-btn" id="quickTransfer500">Transfer 500 BB</button>
+                <div class="quick-amount-actions">
+                    <h4>⚡ Quick Amounts</h4>
+                    <div class="quick-btn-grid">
+                        <button class="quick-btn" id="quickTransfer50">50 BB</button>
+                        <button class="quick-btn" id="quickTransfer100">100 BB</button>
+                        <button class="quick-btn" id="quickTransfer500">500 BB</button>
+                    </div>
                 </div>
             </div>
         `;
+    pageContent.appendChild(transferTabContent);
+    const adminTabContent = document.createElement("div");
+    adminTabContent.id = "adminTabContent";
+    adminTabContent.className = "tab-content";
+    adminTabContent.innerHTML = `
+            <div class="admin-container">
+                <!-- Mint Tokens Card -->
+                <div class="admin-card">
+                    <div class="card-header">
+                        <h3>\uD83E\uDE99 Mint Tokens</h3>
+                        <span class="card-badge admin-badge">Admin Only</span>
+                    </div>
+                    <p class="card-description">Create new tokens and add them to an account</p>
+                    
+                    <div class="form-group">
+                        <label for="mintAccount">
+                            <span class="label-text">Account:</span>
+                            <span class="required">*</span>
+                        </label>
+                        <select id="mintAccount" class="form-input">
+                            <option value="">Select account...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="mintAmount">
+                            <span class="label-text">Amount to Mint (BB):</span>
+                            <span class="required">*</span>
+                        </label>
+                        <input type="number" id="mintAmount" class="form-input" 
+                            placeholder="Enter amount to mint" min="1" step="1" value="">
+                        <div class="hint-text">Tokens will be added to the account's current balance</div>
+                    </div>
+                    
+                    <div class="admin-message" id="mintMessage"></div>
+                    
+                    <button class="btn btn-admin btn-large" id="mintTokensBtn">
+                        <span class="btn-icon">\uD83E\uDE99</span>
+                        <span class="btn-text">Mint Tokens</span>
+                    </button>
+                </div>
+                
+                <!-- Set Balance Card -->
+                <div class="admin-card">
+                    <div class="card-header">
+                        <h3>⚖️ Set Balance</h3>
+                        <span class="card-badge admin-badge">Admin Only</span>
+                    </div>
+                    <p class="card-description">Set an account's balance to a specific value</p>
+                    
+                    <div class="form-group">
+                        <label for="setBalanceAccount">
+                            <span class="label-text">Account:</span>
+                            <span class="required">*</span>
+                        </label>
+                        <select id="setBalanceAccount" class="form-input">
+                            <option value="">Select account...</option>
+                        </select>
+                        <div class="balance-display">
+                            <span class="balance-label">Current Balance:</span>
+                            <span class="balance-value"><span id="currentBalance">0</span> BB</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="newBalance">
+                            <span class="label-text">New Balance (BB):</span>
+                            <span class="required">*</span>
+                        </label>
+                        <input type="number" id="newBalance" class="form-input" 
+                            placeholder="Enter new balance" min="0" step="1" value="">
+                        <div class="hint-text">⚠️ This will replace the current balance</div>
+                    </div>
+                    
+                    <div class="admin-message" id="setBalanceMessage"></div>
+                    
+                    <button class="btn btn-admin btn-large" id="setBalanceBtn">
+                        <span class="btn-icon">⚖️</span>
+                        <span class="btn-text">Set Balance</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    pageContent.appendChild(adminTabContent);
+    const quickActionsTabContent = document.createElement("div");
+    quickActionsTabContent.id = "quickActionsTabContent";
+    quickActionsTabContent.className = "tab-content";
+    quickActionsTabContent.innerHTML = `
+            <div class="quick-actions-container">
+                <div class="quick-actions-header">
+                    <h3>⚡ Quick Actions</h3>
+                    <p>Execute common blockchain operations quickly</p>
+                </div>
+                
+                <div class="quick-actions-grid">
+                    <!-- Get User Bets -->
+                    <div class="action-card">
+                        <div class="action-icon">\uD83D\uDC65</div>
+                        <h4>Get User Bets</h4>
+                        <p>View all bets for a specific user</p>
+                        <select id="userBetsAccount" class="form-input">
+                            <option value="">Select account...</option>
+                        </select>
+                        <button class="btn btn-secondary" id="getUserBetsBtn">
+                            <span class="btn-icon">\uD83D\uDC65</span>
+                            <span class="btn-text">Get Bets</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Get All Markets -->
+                    <div class="action-card">
+                        <div class="action-icon">\uD83D\uDCCA</div>
+                        <h4>Get All Markets</h4>
+                        <p>View all prediction markets</p>
+                        <button class="btn btn-secondary" id="getAllMarketsBtn">
+                            <span class="btn-icon">\uD83D\uDCCA</span>
+                            <span class="btn-text">Get Markets</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Quick Mint -->
+                    <div class="action-card">
+                        <div class="action-icon">\uD83E\uDE99</div>
+                        <h4>Quick Mint</h4>
+                        <p>Mint tokens instantly</p>
+                        <select id="quickMintAccount" class="form-input">
+                            <option value="">Select account...</option>
+                        </select>
+                        <input type="number" id="quickMintAmount" class="form-input" 
+                            placeholder="Amount" min="1" value="100">
+                        <button class="btn btn-admin" id="quickMintBtn">
+                            <span class="btn-icon">\uD83E\uDE99</span>
+                            <span class="btn-text">Quick Mint</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Quick Set Balance -->
+                    <div class="action-card">
+                        <div class="action-icon">⚖️</div>
+                        <h4>Quick Balance</h4>
+                        <p>Set balance instantly</p>
+                        <select id="quickBalanceAccount" class="form-input">
+                            <option value="">Select account...</option>
+                        </select>
+                        <input type="number" id="quickBalanceAmount" class="form-input" 
+                            placeholder="New balance" min="0" value="1000">
+                        <button class="btn btn-admin" id="quickBalanceBtn">
+                            <span class="btn-icon">⚖️</span>
+                            <span class="btn-text">Set Balance</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Results Display -->
+                <div class="results-container" id="quickActionsResults" style="display: none;">
+                    <div class="results-header">
+                        <h4 id="resultsTitle">Results</h4>
+                        <button class="btn-close" id="closeResults">×</button>
+                    </div>
+                    <div class="results-content" id="resultsContent"></div>
+                </div>
+            </div>
+        `;
+    pageContent.appendChild(quickActionsTabContent);
     pageContent.appendChild(this.createTransferStatsPanel());
     page.appendChild(pageContent);
     return page;
@@ -1071,6 +1279,7 @@ class TransfersModule {
     }
   }
   static setupEventListeners() {
+    this.setupTabNavigation();
     const fromSelect = document.getElementById("transferFrom");
     if (fromSelect) {
       fromSelect.addEventListener("change", () => this.updateFromBalance());
@@ -1090,6 +1299,319 @@ class TransfersModule {
     const quickTransfer500 = document.getElementById("quickTransfer500");
     if (quickTransfer500) {
       quickTransfer500.addEventListener("click", () => this.setQuickTransferAmount(500));
+    }
+    this.setupAdminPanelListeners();
+    this.setupQuickActionsListeners();
+  }
+  static setupTabNavigation() {
+    const transferTab = document.getElementById("transferTab");
+    const adminTab = document.getElementById("adminTab");
+    const quickActionsTab = document.getElementById("quickActionsTab");
+    const transferContent = document.getElementById("transferTabContent");
+    const adminContent = document.getElementById("adminTabContent");
+    const quickActionsContent = document.getElementById("quickActionsTabContent");
+    if (transferTab) {
+      transferTab.addEventListener("click", () => {
+        this.switchTab("transfer", transferTab, transferContent);
+      });
+    }
+    if (adminTab) {
+      adminTab.addEventListener("click", () => {
+        this.switchTab("admin", adminTab, adminContent);
+        this.populateAdminSelects();
+      });
+    }
+    if (quickActionsTab) {
+      quickActionsTab.addEventListener("click", () => {
+        this.switchTab("quickActions", quickActionsTab, quickActionsContent);
+        this.populateQuickActionSelects();
+      });
+    }
+  }
+  static switchTab(tabName, tabButton, content) {
+    document.querySelectorAll(".tab-btn").forEach((btn) => btn.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach((content2) => content2.classList.remove("active"));
+    tabButton.classList.add("active");
+    if (content) {
+      content.classList.add("active");
+    }
+    debugConsole.log(`\uD83D\uDCD1 Switched to ${tabName} tab`, "info");
+  }
+  static setupAdminPanelListeners() {
+    const mintBtn = document.getElementById("mintTokensBtn");
+    if (mintBtn) {
+      mintBtn.addEventListener("click", () => this.executeMintTokens());
+    }
+    const setBalanceBtn = document.getElementById("setBalanceBtn");
+    if (setBalanceBtn) {
+      setBalanceBtn.addEventListener("click", () => this.executeSetBalance());
+    }
+    const setBalanceAccount = document.getElementById("setBalanceAccount");
+    if (setBalanceAccount) {
+      setBalanceAccount.addEventListener("change", () => this.updateCurrentBalance());
+    }
+  }
+  static setupQuickActionsListeners() {
+    const getUserBetsBtn = document.getElementById("getUserBetsBtn");
+    if (getUserBetsBtn) {
+      getUserBetsBtn.addEventListener("click", () => this.executeGetUserBets());
+    }
+    const getAllMarketsBtn = document.getElementById("getAllMarketsBtn");
+    if (getAllMarketsBtn) {
+      getAllMarketsBtn.addEventListener("click", () => this.executeGetAllMarkets());
+    }
+    const quickMintBtn = document.getElementById("quickMintBtn");
+    if (quickMintBtn) {
+      quickMintBtn.addEventListener("click", () => this.executeQuickMint());
+    }
+    const quickBalanceBtn = document.getElementById("quickBalanceBtn");
+    if (quickBalanceBtn) {
+      quickBalanceBtn.addEventListener("click", () => this.executeQuickBalance());
+    }
+    const closeResults = document.getElementById("closeResults");
+    if (closeResults) {
+      closeResults.addEventListener("click", () => this.closeResults());
+    }
+  }
+  static populateAdminSelects() {
+    const mintAccount = document.getElementById("mintAccount");
+    const setBalanceAccount = document.getElementById("setBalanceAccount");
+    if (!mintAccount || !setBalanceAccount)
+      return;
+    const options = this.accounts.map((account) => `<option value="${account.name}">${account.name} (${account.balance} BB)</option>`).join("");
+    mintAccount.innerHTML = '<option value="">Select account...</option>' + options;
+    setBalanceAccount.innerHTML = '<option value="">Select account...</option>' + options;
+  }
+  static populateQuickActionSelects() {
+    const userBetsAccount = document.getElementById("userBetsAccount");
+    const quickMintAccount = document.getElementById("quickMintAccount");
+    const quickBalanceAccount = document.getElementById("quickBalanceAccount");
+    const options = this.accounts.map((account) => `<option value="${account.name}">${account.name}</option>`).join("");
+    if (userBetsAccount) {
+      userBetsAccount.innerHTML = '<option value="">Select account...</option>' + options;
+    }
+    if (quickMintAccount) {
+      quickMintAccount.innerHTML = '<option value="">Select account...</option>' + options;
+    }
+    if (quickBalanceAccount) {
+      quickBalanceAccount.innerHTML = '<option value="">Select account...</option>' + options;
+    }
+  }
+  static async executeMintTokens() {
+    try {
+      const accountSelect = document.getElementById("mintAccount");
+      const amountInput = document.getElementById("mintAmount");
+      const messageDiv = document.getElementById("mintMessage");
+      const btn = document.getElementById("mintTokensBtn");
+      const account = accountSelect?.value;
+      const amount = parseFloat(amountInput?.value || "0");
+      if (!account || !amount || amount <= 0) {
+        this.showAdminMessage("mintMessage", "❌ Please select account and enter valid amount", "error");
+        return;
+      }
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">Minting...</span>';
+      }
+      debugConsole.log(`\uD83E\uDE99 Minting ${amount} BB to ${account}...`, "info");
+      const result = await BackendService.adminMintTokens(account, amount);
+      this.showAdminMessage("mintMessage", `✅ ${result}`, "success");
+      debugConsole.log(`✅ Minted ${amount} BB to ${account}`, "success");
+      if (amountInput)
+        amountInput.value = "";
+      if (accountSelect)
+        accountSelect.value = "";
+      await this.refreshAccountBalances();
+      this.populateAdminSelects();
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="btn-icon">\uD83E\uDE99</span><span class="btn-text">Mint Tokens</span>';
+      }
+    } catch (error) {
+      debugConsole.log(`❌ Mint failed: ${error}`, "error");
+      this.showAdminMessage("mintMessage", `❌ Mint failed: ${error}`, "error");
+      const btn = document.getElementById("mintTokensBtn");
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="btn-icon">\uD83E\uDE99</span><span class="btn-text">Mint Tokens</span>';
+      }
+    }
+  }
+  static updateCurrentBalance() {
+    const accountSelect = document.getElementById("setBalanceAccount");
+    const currentBalance = document.getElementById("currentBalance");
+    if (!accountSelect || !currentBalance)
+      return;
+    const selectedAccountName = accountSelect.value;
+    const selectedAccount = this.accounts.find((a) => a.name === selectedAccountName);
+    if (selectedAccount) {
+      currentBalance.textContent = selectedAccount.balance.toString();
+    } else {
+      currentBalance.textContent = "0";
+    }
+  }
+  static async executeSetBalance() {
+    try {
+      const accountSelect = document.getElementById("setBalanceAccount");
+      const balanceInput = document.getElementById("newBalance");
+      const messageDiv = document.getElementById("setBalanceMessage");
+      const btn = document.getElementById("setBalanceBtn");
+      const account = accountSelect?.value;
+      const newBalance = parseFloat(balanceInput?.value || "0");
+      if (!account || newBalance < 0) {
+        this.showAdminMessage("setBalanceMessage", "❌ Please select account and enter valid balance", "error");
+        return;
+      }
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">Setting...</span>';
+      }
+      debugConsole.log(`⚖️ Setting ${account} balance to ${newBalance} BB...`, "info");
+      const result = await BackendService.adminSetBalance(account, newBalance);
+      this.showAdminMessage("setBalanceMessage", `✅ ${result}`, "success");
+      debugConsole.log(`✅ Set ${account} balance to ${newBalance} BB`, "success");
+      if (balanceInput)
+        balanceInput.value = "";
+      if (accountSelect)
+        accountSelect.value = "";
+      await this.refreshAccountBalances();
+      this.populateAdminSelects();
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="btn-icon">⚖️</span><span class="btn-text">Set Balance</span>';
+      }
+    } catch (error) {
+      debugConsole.log(`❌ Set balance failed: ${error}`, "error");
+      this.showAdminMessage("setBalanceMessage", `❌ Set balance failed: ${error}`, "error");
+      const btn = document.getElementById("setBalanceBtn");
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="btn-icon">⚖️</span><span class="btn-text">Set Balance</span>';
+      }
+    }
+  }
+  static async executeGetUserBets() {
+    try {
+      const accountSelect = document.getElementById("userBetsAccount");
+      const account = accountSelect?.value;
+      if (!account) {
+        this.showResults("Error", "❌ Please select an account", "error");
+        return;
+      }
+      debugConsole.log(`\uD83D\uDC65 Fetching bets for ${account}...`, "info");
+      const bets = await BackendService.getUserBets(account);
+      if (bets.length === 0) {
+        this.showResults(`${account}'s Bets`, `<p class="no-data">No bets found for ${account}</p>`, "info");
+      } else {
+        const betsHTML = bets.map((bet) => `
+                    <div class="bet-item">
+                        <div><strong>Market:</strong> ${bet.market_id || "N/A"}</div>
+                        <div><strong>Amount:</strong> ${bet.amount} BB</div>
+                        <div><strong>Prediction:</strong> ${bet.prediction || "N/A"}</div>
+                        <div><strong>Status:</strong> ${bet.status || "Active"}</div>
+                    </div>
+                `).join("");
+        this.showResults(`${account}'s Bets (${bets.length})`, betsHTML, "success");
+        debugConsole.log(`✅ Found ${bets.length} bets for ${account}`, "success");
+      }
+    } catch (error) {
+      debugConsole.log(`❌ Failed to get user bets: ${error}`, "error");
+      this.showResults("Error", `❌ Failed to get user bets: ${error}`, "error");
+    }
+  }
+  static async executeGetAllMarkets() {
+    try {
+      debugConsole.log(`\uD83D\uDCCA Fetching all markets...`, "info");
+      const markets = await BackendService.getAllMarkets();
+      if (markets.length === 0) {
+        this.showResults("All Markets", '<p class="no-data">No markets found</p>', "info");
+      } else {
+        const marketsHTML = markets.map((market) => `
+                    <div class="market-item">
+                        <div><strong>ID:</strong> ${market.id}</div>
+                        <div><strong>Title:</strong> ${market.title || "Untitled"}</div>
+                        <div><strong>Volume:</strong> ${market.total_volume || 0} BB</div>
+                        <div><strong>Status:</strong> ${market.status || "Active"}</div>
+                    </div>
+                `).join("");
+        this.showResults(`All Markets (${markets.length})`, marketsHTML, "success");
+        debugConsole.log(`✅ Found ${markets.length} markets`, "success");
+      }
+    } catch (error) {
+      debugConsole.log(`❌ Failed to get markets: ${error}`, "error");
+      this.showResults("Error", `❌ Failed to get markets: ${error}`, "error");
+    }
+  }
+  static async executeQuickMint() {
+    try {
+      const accountSelect = document.getElementById("quickMintAccount");
+      const amountInput = document.getElementById("quickMintAmount");
+      const account = accountSelect?.value;
+      const amount = parseFloat(amountInput?.value || "0");
+      if (!account || !amount || amount <= 0) {
+        this.showResults("Error", "❌ Please select account and enter valid amount", "error");
+        return;
+      }
+      debugConsole.log(`\uD83E\uDE99 Quick minting ${amount} BB to ${account}...`, "info");
+      const result = await BackendService.adminMintTokens(account, amount);
+      this.showResults("Quick Mint", `✅ ${result}`, "success");
+      debugConsole.log(`✅ Quick minted ${amount} BB to ${account}`, "success");
+      await this.refreshAccountBalances();
+      this.populateQuickActionSelects();
+    } catch (error) {
+      debugConsole.log(`❌ Quick mint failed: ${error}`, "error");
+      this.showResults("Error", `❌ Quick mint failed: ${error}`, "error");
+    }
+  }
+  static async executeQuickBalance() {
+    try {
+      const accountSelect = document.getElementById("quickBalanceAccount");
+      const amountInput = document.getElementById("quickBalanceAmount");
+      const account = accountSelect?.value;
+      const newBalance = parseFloat(amountInput?.value || "0");
+      if (!account || newBalance < 0) {
+        this.showResults("Error", "❌ Please select account and enter valid balance", "error");
+        return;
+      }
+      debugConsole.log(`⚖️ Quick setting ${account} balance to ${newBalance} BB...`, "info");
+      const result = await BackendService.adminSetBalance(account, newBalance);
+      this.showResults("Quick Balance", `✅ ${result}`, "success");
+      debugConsole.log(`✅ Quick set ${account} balance to ${newBalance} BB`, "success");
+      await this.refreshAccountBalances();
+      this.populateQuickActionSelects();
+    } catch (error) {
+      debugConsole.log(`❌ Quick balance failed: ${error}`, "error");
+      this.showResults("Error", `❌ Quick balance failed: ${error}`, "error");
+    }
+  }
+  static showAdminMessage(elementId, message, type = "info") {
+    const messageDiv = document.getElementById(elementId);
+    if (!messageDiv)
+      return;
+    messageDiv.textContent = message;
+    messageDiv.className = `admin-message admin-message-${type}`;
+    messageDiv.style.display = "block";
+    if (type === "success") {
+      setTimeout(() => {
+        messageDiv.style.display = "none";
+      }, 5000);
+    }
+  }
+  static showResults(title, content, type = "info") {
+    const resultsContainer = document.getElementById("quickActionsResults");
+    const resultsTitle = document.getElementById("resultsTitle");
+    const resultsContent = document.getElementById("resultsContent");
+    if (!resultsContainer || !resultsTitle || !resultsContent)
+      return;
+    resultsTitle.textContent = title;
+    resultsContent.innerHTML = content;
+    resultsContainer.style.display = "block";
+    resultsContainer.className = `results-container results-${type}`;
+  }
+  static closeResults() {
+    const resultsContainer = document.getElementById("quickActionsResults");
+    if (resultsContainer) {
+      resultsContainer.style.display = "none";
     }
   }
   static initialize(accounts) {
@@ -1537,6 +2059,7 @@ function setupBlackbookEventListeners(_rssMarkets) {
       const outcomeIdx = e.currentTarget.getAttribute("data-outcome");
       const marketId = e.currentTarget.getAttribute("data-market-id");
       const option = e.currentTarget.getAttribute("data-option");
+      const title = e.currentTarget.getAttribute("data-title");
       if (!marketIdx || !outcomeIdx || !marketId || !option) {
         log("❌ Invalid bet data", "error");
         return;
@@ -1545,20 +2068,137 @@ function setupBlackbookEventListeners(_rssMarkets) {
         log("❌ Please select an account first", "error");
         return;
       }
-      const amount = prompt(`Enter amount to bet on "${option}" (in BB):`);
-      if (!amount || isNaN(parseFloat(amount))) {
-        log("❌ Invalid bet amount", "error");
-        return;
-      }
-      try {
-        log(`\uD83C\uDFAF Placing bet on "${option}" for ${amount} BB...`, "info");
-        await BackendService.placeBet(marketId, selectedAccount.name, parseFloat(amount), option);
-        log(`✅ Bet placed successfully! ${amount} BB on "${option}"`, "success");
-        await loadAccounts();
-      } catch (error) {
-        log(`❌ Bet failed: ${error}`, "error");
-      }
+      showBettingModal(marketId, title || "Unknown Market", option, selectedAccount);
     });
+  });
+}
+function showBettingModal(marketId, marketTitle, option, account) {
+  const existingModal = document.getElementById("bettingModal");
+  if (existingModal) {
+    existingModal.remove();
+  }
+  const balance = account.balance || 0;
+  const modalHTML = `
+        <div id="bettingModal" class="betting-modal-overlay">
+            <div class="betting-modal-content">
+                <div class="betting-modal-header">
+                    <h2 class="betting-modal-title">Place Bet</h2>
+                    <button class="betting-modal-close" id="closeBettingModal">&times;</button>
+                </div>
+                
+                <div class="betting-modal-body">
+                    <div class="betting-info-section">
+                        <div class="betting-info-item">
+                            <span class="betting-info-label">Market:</span>
+                            <span class="betting-info-value">${marketTitle}</span>
+                        </div>
+                        <div class="betting-info-item">
+                            <span class="betting-info-label">Betting On:</span>
+                            <span class="betting-info-value betting-option-highlight">${option}</span>
+                        </div>
+                        <div class="betting-info-item">
+                            <span class="betting-info-label">Account:</span>
+                            <span class="betting-info-value">${account.name}</span>
+                        </div>
+                        <div class="betting-info-item">
+                            <span class="betting-info-label">Available Balance:</span>
+                            <span class="betting-info-value betting-balance">${balance.toFixed(2)} BB</span>
+                        </div>
+                    </div>
+                    
+                    <div class="betting-amount-section">
+                        <label for="betAmount" class="betting-amount-label">
+                            Bet Amount (BB)
+                        </label>
+                        <input 
+                            type="number" 
+                            id="betAmount" 
+                            class="betting-amount-input"
+                            placeholder="Enter amount..."
+                            min="0.01"
+                            max="${balance}"
+                            step="0.01"
+                        />
+                        <div class="betting-quick-amounts">
+                            <button class="betting-quick-btn" data-amount="10">10 BB</button>
+                            <button class="betting-quick-btn" data-amount="50">50 BB</button>
+                            <button class="betting-quick-btn" data-amount="100">100 BB</button>
+                            <button class="betting-quick-btn" data-amount="${balance}">MAX</button>
+                        </div>
+                        <div id="betAmountError" class="betting-amount-error" style="display: none;"></div>
+                    </div>
+                </div>
+                
+                <div class="betting-modal-footer">
+                    <button class="betting-modal-btn betting-btn-cancel" id="cancelBet">Cancel</button>
+                    <button class="betting-modal-btn betting-btn-submit" id="submitBet">Place Bet</button>
+                </div>
+            </div>
+        </div>
+    `;
+  document.body.insertAdjacentHTML("beforeend", modalHTML);
+  const modal = document.getElementById("bettingModal");
+  const closeBtn = document.getElementById("closeBettingModal");
+  const cancelBtn = document.getElementById("cancelBet");
+  const submitBtn = document.getElementById("submitBet");
+  const amountInput = document.getElementById("betAmount");
+  const errorDiv = document.getElementById("betAmountError");
+  const quickBtns = document.querySelectorAll(".betting-quick-btn");
+  amountInput.focus();
+  quickBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const amount = btn.getAttribute("data-amount");
+      amountInput.value = amount || "";
+      errorDiv.style.display = "none";
+    });
+  });
+  const closeModal = () => {
+    modal.classList.add("modal-closing");
+    setTimeout(() => modal.remove(), 300);
+  };
+  closeBtn.addEventListener("click", closeModal);
+  cancelBtn.addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal)
+      closeModal();
+  });
+  submitBtn.addEventListener("click", async () => {
+    const amount = parseFloat(amountInput.value);
+    if (!amountInput.value || isNaN(amount)) {
+      errorDiv.textContent = "Please enter a valid amount";
+      errorDiv.style.display = "block";
+      return;
+    }
+    if (amount <= 0) {
+      errorDiv.textContent = "Amount must be greater than 0";
+      errorDiv.style.display = "block";
+      return;
+    }
+    if (amount > balance) {
+      errorDiv.textContent = `Insufficient balance (max: ${balance.toFixed(2)} BB)`;
+      errorDiv.style.display = "block";
+      return;
+    }
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Placing Bet...";
+    try {
+      log(`\uD83C\uDFAF Placing bet on "${option}" for ${amount} BB...`, "info");
+      await BackendService.placeBet(marketId, account.name, amount, option);
+      log(`✅ Bet placed successfully! ${amount} BB on "${option}"`, "success");
+      await loadAccounts();
+      closeModal();
+    } catch (error) {
+      log(`❌ Bet failed: ${error}`, "error");
+      errorDiv.textContent = `Failed to place bet: ${error}`;
+      errorDiv.style.display = "block";
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Place Bet";
+    }
+  });
+  amountInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      submitBtn.click();
+    }
   });
 }
 async function updatePrices() {

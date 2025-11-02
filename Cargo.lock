@@ -382,6 +382,7 @@ name = "blackbook"
 version = "1.0.0"
 dependencies = [
  "blackbook-prediction-market",
+ "chrono",
  "reqwest",
  "roxmltree",
  "serde",

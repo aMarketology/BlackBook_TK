@@ -90,11 +90,7 @@ export class UIBuilder {
         networkInfo.appendChild(tokenBadge);
         
         // Accounts badge
-        const accountsBadge = document.createElement('span');
-        accountsBadge.className = 'badge';
-        accountsBadge.textContent = '📊 8 Accounts';
-        networkInfo.appendChild(accountsBadge);
-        
+
         // Home button (hidden for now)
         // const homeNavBtn = document.createElement('button');
         // homeNavBtn.className = 'badge badge-button';
@@ -251,19 +247,46 @@ static buildMainContent(): HTMLElement {
         pageHeader.className = 'page-header';
         pageHeader.innerHTML = `
             <button class="back-btn" id="backBtn">← Back to Markets</button>
-            <h2>🔄 Admin Transfer Panel</h2>
-            <p class="page-subtitle">Transfer BlackBook tokens between accounts</p>
+            <h2>� Token Management</h2>
+            <p class="page-subtitle">Transfer tokens, manage balances, and view blockchain activity</p>
         `;
         page.appendChild(pageHeader);
+        
+        // Tab navigation
+        const tabNav = document.createElement('div');
+        tabNav.className = 'tab-nav';
+        tabNav.innerHTML = `
+            <button class="tab-btn active" id="transferTab">
+                <span class="tab-icon">🔄</span>
+                <span class="tab-label">Transfers</span>
+            </button>
+            <button class="tab-btn" id="adminTab">
+                <span class="tab-icon">🔐</span>
+                <span class="tab-label">Admin Panel</span>
+            </button>
+            <button class="tab-btn" id="quickActionsTab">
+                <span class="tab-icon">⚡</span>
+                <span class="tab-label">Quick Actions</span>
+            </button>
+        `;
+        page.appendChild(tabNav);
         
         // Page content
         const pageContent = document.createElement('div');
         pageContent.className = 'page-content';
-        pageContent.innerHTML = `
+        
+        // Transfer Tab Content
+        const transferTabContent = document.createElement('div');
+        transferTabContent.id = 'transferTabContent';
+        transferTabContent.className = 'tab-content active';
+        transferTabContent.innerHTML = `
             <div class="transfer-container">
                 <!-- Transfer Form Card -->
                 <div class="transfer-card">
-                    <h3>💸 Transfer Tokens</h3>
+                    <div class="card-header">
+                        <h3>💸 Transfer Tokens</h3>
+                        <span class="card-badge">Standard Transfer</span>
+                    </div>
                     
                     <div class="form-group">
                         <label for="transferFrom">
@@ -308,14 +331,186 @@ static buildMainContent(): HTMLElement {
                 </div>
                 
                 <!-- Quick Transfer Templates -->
-                <div class="quick-actions">
-                    <h4>⚡ Quick Actions</h4>
-                    <button class="quick-btn" id="quickTransfer50">Transfer 50 BB</button>
-                    <button class="quick-btn" id="quickTransfer100">Transfer 100 BB</button>
-                    <button class="quick-btn" id="quickTransfer500">Transfer 500 BB</button>
+                <div class="quick-amount-actions">
+                    <h4>⚡ Quick Amounts</h4>
+                    <div class="quick-btn-grid">
+                        <button class="quick-btn" id="quickTransfer50">50 BB</button>
+                        <button class="quick-btn" id="quickTransfer100">100 BB</button>
+                        <button class="quick-btn" id="quickTransfer500">500 BB</button>
+                    </div>
                 </div>
             </div>
         `;
+        pageContent.appendChild(transferTabContent);
+        
+        // Admin Tab Content
+        const adminTabContent = document.createElement('div');
+        adminTabContent.id = 'adminTabContent';
+        adminTabContent.className = 'tab-content';
+        adminTabContent.innerHTML = `
+            <div class="admin-container">
+                <!-- Mint Tokens Card -->
+                <div class="admin-card">
+                    <div class="card-header">
+                        <h3>🪙 Mint Tokens</h3>
+                        <span class="card-badge admin-badge">Admin Only</span>
+                    </div>
+                    <p class="card-description">Create new tokens and add them to an account</p>
+                    
+                    <div class="form-group">
+                        <label for="mintAccount">
+                            <span class="label-text">Account:</span>
+                            <span class="required">*</span>
+                        </label>
+                        <select id="mintAccount" class="form-input">
+                            <option value="">Select account...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="mintAmount">
+                            <span class="label-text">Amount to Mint (BB):</span>
+                            <span class="required">*</span>
+                        </label>
+                        <input type="number" id="mintAmount" class="form-input" 
+                            placeholder="Enter amount to mint" min="1" step="1" value="">
+                        <div class="hint-text">Tokens will be added to the account's current balance</div>
+                    </div>
+                    
+                    <div class="admin-message" id="mintMessage"></div>
+                    
+                    <button class="btn btn-admin btn-large" id="mintTokensBtn">
+                        <span class="btn-icon">🪙</span>
+                        <span class="btn-text">Mint Tokens</span>
+                    </button>
+                </div>
+                
+                <!-- Set Balance Card -->
+                <div class="admin-card">
+                    <div class="card-header">
+                        <h3>⚖️ Set Balance</h3>
+                        <span class="card-badge admin-badge">Admin Only</span>
+                    </div>
+                    <p class="card-description">Set an account's balance to a specific value</p>
+                    
+                    <div class="form-group">
+                        <label for="setBalanceAccount">
+                            <span class="label-text">Account:</span>
+                            <span class="required">*</span>
+                        </label>
+                        <select id="setBalanceAccount" class="form-input">
+                            <option value="">Select account...</option>
+                        </select>
+                        <div class="balance-display">
+                            <span class="balance-label">Current Balance:</span>
+                            <span class="balance-value"><span id="currentBalance">0</span> BB</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="newBalance">
+                            <span class="label-text">New Balance (BB):</span>
+                            <span class="required">*</span>
+                        </label>
+                        <input type="number" id="newBalance" class="form-input" 
+                            placeholder="Enter new balance" min="0" step="1" value="">
+                        <div class="hint-text">⚠️ This will replace the current balance</div>
+                    </div>
+                    
+                    <div class="admin-message" id="setBalanceMessage"></div>
+                    
+                    <button class="btn btn-admin btn-large" id="setBalanceBtn">
+                        <span class="btn-icon">⚖️</span>
+                        <span class="btn-text">Set Balance</span>
+                    </button>
+                </div>
+            </div>
+        `;
+        pageContent.appendChild(adminTabContent);
+        
+        // Quick Actions Tab Content
+        const quickActionsTabContent = document.createElement('div');
+        quickActionsTabContent.id = 'quickActionsTabContent';
+        quickActionsTabContent.className = 'tab-content';
+        quickActionsTabContent.innerHTML = `
+            <div class="quick-actions-container">
+                <div class="quick-actions-header">
+                    <h3>⚡ Quick Actions</h3>
+                    <p>Execute common blockchain operations quickly</p>
+                </div>
+                
+                <div class="quick-actions-grid">
+                    <!-- Get User Bets -->
+                    <div class="action-card">
+                        <div class="action-icon">👥</div>
+                        <h4>Get User Bets</h4>
+                        <p>View all bets for a specific user</p>
+                        <select id="userBetsAccount" class="form-input">
+                            <option value="">Select account...</option>
+                        </select>
+                        <button class="btn btn-secondary" id="getUserBetsBtn">
+                            <span class="btn-icon">👥</span>
+                            <span class="btn-text">Get Bets</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Get All Markets -->
+                    <div class="action-card">
+                        <div class="action-icon">📊</div>
+                        <h4>Get All Markets</h4>
+                        <p>View all prediction markets</p>
+                        <button class="btn btn-secondary" id="getAllMarketsBtn">
+                            <span class="btn-icon">📊</span>
+                            <span class="btn-text">Get Markets</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Quick Mint -->
+                    <div class="action-card">
+                        <div class="action-icon">🪙</div>
+                        <h4>Quick Mint</h4>
+                        <p>Mint tokens instantly</p>
+                        <select id="quickMintAccount" class="form-input">
+                            <option value="">Select account...</option>
+                        </select>
+                        <input type="number" id="quickMintAmount" class="form-input" 
+                            placeholder="Amount" min="1" value="100">
+                        <button class="btn btn-admin" id="quickMintBtn">
+                            <span class="btn-icon">🪙</span>
+                            <span class="btn-text">Quick Mint</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Quick Set Balance -->
+                    <div class="action-card">
+                        <div class="action-icon">⚖️</div>
+                        <h4>Quick Balance</h4>
+                        <p>Set balance instantly</p>
+                        <select id="quickBalanceAccount" class="form-input">
+                            <option value="">Select account...</option>
+                        </select>
+                        <input type="number" id="quickBalanceAmount" class="form-input" 
+                            placeholder="New balance" min="0" value="1000">
+                        <button class="btn btn-admin" id="quickBalanceBtn">
+                            <span class="btn-icon">⚖️</span>
+                            <span class="btn-text">Set Balance</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Results Display -->
+                <div class="results-container" id="quickActionsResults" style="display: none;">
+                    <div class="results-header">
+                        <h4 id="resultsTitle">Results</h4>
+                        <button class="btn-close" id="closeResults">×</button>
+                    </div>
+                    <div class="results-content" id="resultsContent"></div>
+                </div>
+            </div>
+        `;
+        pageContent.appendChild(quickActionsTabContent);
+        
+        // Add stats panel
         pageContent.appendChild(this.createTransferStatsPanel());
         page.appendChild(pageContent);
         

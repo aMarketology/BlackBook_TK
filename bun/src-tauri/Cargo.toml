@@ -16,6 +16,7 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.11", features = ["json"] }
 roxmltree = "0.18"
+chrono = "0.4"
 blackbook-prediction-market = { path = "../../blackBook" }
 
 [features]

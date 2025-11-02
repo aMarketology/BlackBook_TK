@@ -88,27 +88,125 @@ pub fn get_balance(address: String, state: State<AppState>) -> Result<f64, Strin
     Ok(ledger.get_balance(&address))
 }
 
-/// Place a bet on a market
+/// Place a bet on a market - PROXIES TO BLOCKCHAIN CORE HTTP API
 #[tauri::command]
-pub fn place_bet(req: BetRequest, state: State<AppState>) -> Result<String, String> {
-    let mut ledger = state.lock().map_err(|e| e.to_string())?;
+pub async fn place_bet(req: BetRequest, state: State<'_, AppState>) -> Result<String, String> {
+    let timestamp = chrono::Local::now().format("%H:%M:%S");
+    println!("[{}] 🎯 IPC→HTTP | place_bet called | Account: {}, Market: {}, Amount: {} BB, Prediction: {}", 
+        timestamp, req.account, req.market_id, req.amount, req.prediction);
     
-    let market_id = format!("{}_{}", req.market_id, req.prediction);
-    ledger.place_bet(&req.account, &market_id, req.amount)
+    // Call blockchain core HTTP API
+    let client = reqwest::Client::new();
+    let url = "http://localhost:3000/bet";
+    
+    let payload = serde_json::json!({
+        "account": req.account,
+        "market_id": req.market_id,
+        "amount": req.amount,
+        "prediction": req.prediction
+    });
+    
+    let response = client.post(url)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to connect to blockchain: {}", e))?;
+    
+    if response.status().is_success() {
+        let result: serde_json::Value = response.json()
+            .await
+            .map_err(|e| format!("Failed to parse response: {}", e))?;
+        
+        let timestamp = chrono::Local::now().format("%H:%M:%S");
+        println!("[{}] ✅ BLOCKCHAIN_VERIFIED | Bet placed successfully via HTTP API", timestamp);
+        
+        Ok(result.to_string())
+    } else {
+        let error = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let timestamp = chrono::Local::now().format("%H:%M:%S");
+        println!("[{}] ❌ BLOCKCHAIN_REJECTED | {}", timestamp, error);
+        Err(error)
+    }
 }
 
-/// Transfer tokens between accounts
+/// Transfer tokens between accounts - PROXIES TO BLOCKCHAIN CORE HTTP API
 #[tauri::command]
-pub fn transfer(req: TransferRequest, state: State<AppState>) -> Result<String, String> {
-    let mut ledger = state.lock().map_err(|e| e.to_string())?;
-    ledger.transfer(&req.from, &req.to, req.amount)
+pub async fn transfer(req: TransferRequest, state: State<'_, AppState>) -> Result<String, String> {
+    let timestamp = chrono::Local::now().format("%H:%M:%S");
+    println!("[{}] 🎯 IPC→HTTP | transfer called | From: {}, To: {}, Amount: {} BB", 
+        timestamp, req.from, req.to, req.amount);
+    
+    // Call blockchain core HTTP API
+    let client = reqwest::Client::new();
+    let url = "http://localhost:3000/transfer";
+    
+    let payload = serde_json::json!({
+        "from": req.from,
+        "to": req.to,
+        "amount": req.amount
+    });
+    
+    let response = client.post(url)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to connect to blockchain: {}", e))?;
+    
+    if response.status().is_success() {
+        let result: serde_json::Value = response.json()
+            .await
+            .map_err(|e| format!("Failed to parse response: {}", e))?;
+        
+        let timestamp = chrono::Local::now().format("%H:%M:%S");
+        println!("[{}] ✅ BLOCKCHAIN_VERIFIED | Transfer completed via HTTP API", timestamp);
+        
+        Ok(result.to_string())
+    } else {
+        let error = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let timestamp = chrono::Local::now().format("%H:%M:%S");
+        println!("[{}] ❌ BLOCKCHAIN_REJECTED | {}", timestamp, error);
+        Err(error)
+    }
 }
 
-/// Admin: Add tokens to an account
+/// Admin: Add tokens to an account - PROXIES TO BLOCKCHAIN CORE HTTP API
 #[tauri::command]
-pub fn admin_deposit(req: DepositRequest, state: State<AppState>) -> Result<String, String> {
-    let mut ledger = state.lock().map_err(|e| e.to_string())?;
-    ledger.add_tokens(&req.address, req.amount)
+pub async fn admin_deposit(req: DepositRequest, state: State<'_, AppState>) -> Result<String, String> {
+    let timestamp = chrono::Local::now().format("%H:%M:%S");
+    println!("[{}] 🎯 IPC→HTTP | admin_deposit called | Account: {}, Amount: {} BB", 
+        timestamp, req.address, req.amount);
+    
+    // Call blockchain core HTTP API
+    let client = reqwest::Client::new();
+    let url = "http://localhost:3000/deposit";
+    
+    let payload = serde_json::json!({
+        "address": req.address,
+        "amount": req.amount,
+        "memo": "Admin deposit via Tauri IPC"
+    });
+    
+    let response = client.post(url)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to connect to blockchain: {}", e))?;
+    
+    if response.status().is_success() {
+        let result: serde_json::Value = response.json()
+            .await
+            .map_err(|e| format!("Failed to parse response: {}", e))?;
+        
+        let timestamp = chrono::Local::now().format("%H:%M:%S");
+        println!("[{}] ✅ BLOCKCHAIN_VERIFIED | Deposit completed via HTTP API", timestamp);
+        
+        Ok(result.to_string())
+    } else {
+        let error = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let timestamp = chrono::Local::now().format("%H:%M:%S");
+        println!("[{}] ❌ BLOCKCHAIN_REJECTED | {}", timestamp, error);
+        Err(error)
+    }
 }
 
 /// Get all transactions in the ledger
@@ -581,12 +679,19 @@ pub fn get_all_markets(state: State<AppState>) -> Result<Vec<Market>, String> {
 pub fn admin_mint_tokens(account: String, amount: f64, state: State<AppState>) -> Result<String, String> {
     let mut ledger = state.lock().map_err(|e| e.to_string())?;
     
-    println!("🔐 ADMIN: Minting {} BB to {}", amount, account);
+    let old_balance = ledger.get_balance(&account);
+    let result = ledger.admin_mint_tokens(&account, amount);
     
-    let result = ledger.admin_mint_tokens(&account, amount)?;
-    
-    println!("✅ {}", result);
-    Ok(result)
+    // Log blockchain activity
+    if let Ok(ref tx_id) = result {
+        let new_balance = ledger.get_balance(&account);
+        let timestamp = chrono::Local::now().format("%H:%M:%S");
+        println!("[{}] 🪙 TOKENS_MINTED | Account: {} | Minted: {} BB | Old Balance: {} BB | New Balance: {} BB | TX: {}", 
+            timestamp, account, amount, old_balance, new_balance, tx_id);
+        Ok(format!("Successfully minted {} BB to {}. New balance: {} BB", amount, account, new_balance))
+    } else {
+        result
+    }
 }
 
 /// Admin command to set an account balance to a specific value
@@ -594,10 +699,16 @@ pub fn admin_mint_tokens(account: String, amount: f64, state: State<AppState>) -
 pub fn admin_set_balance(account: String, new_balance: f64, state: State<AppState>) -> Result<String, String> {
     let mut ledger = state.lock().map_err(|e| e.to_string())?;
     
-    println!("🔐 ADMIN: Setting {} balance to {} BB", account, new_balance);
+    let old_balance = ledger.get_balance(&account);
+    let result = ledger.admin_set_balance(&account, new_balance);
     
-    let result = ledger.admin_set_balance(&account, new_balance)?;
-    
-    println!("✅ {}", result);
-    Ok(result)
+    // Log blockchain activity
+    if let Ok(ref tx_id) = result {
+        let timestamp = chrono::Local::now().format("%H:%M:%S");
+        println!("[{}] ⚖️  BALANCE_SET | Account: {} | Old: {} BB → New: {} BB | TX: {}", 
+            timestamp, account, old_balance, new_balance, tx_id);
+        Ok(format!("Successfully set {} balance to {} BB", account, new_balance))
+    } else {
+        result
+    }
 }

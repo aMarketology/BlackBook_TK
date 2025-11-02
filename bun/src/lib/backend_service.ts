@@ -203,7 +203,12 @@ export class BackendService {
     static async placeBet(marketId: string, account: string, amount: number, prediction: string): Promise<string> {
         try {
             return await invoke('place_bet', { 
-                req: { marketId, account, amount, prediction }
+                req: { 
+                    market_id: marketId,
+                    account, 
+                    amount, 
+                    prediction 
+                }
             }) as string;
         } catch (error) {
             console.error('❌ Bet placement failed:', error);
@@ -323,6 +328,33 @@ export class BackendService {
             return result;
         } catch (error) {
             console.error('❌ Admin set balance failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get all bets for a specific user/account
+     * @param account - Account name or address
+     */
+    static async getUserBets(account: string): Promise<any[]> {
+        try {
+            console.log(`📊 Fetching bets for ${account}...`);
+            return await invoke('get_user_bets', { account }) as any[];
+        } catch (error) {
+            console.error('❌ Failed to get user bets:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get all markets in the system
+     */
+    static async getAllMarkets(): Promise<any[]> {
+        try {
+            console.log('📊 Fetching all markets...');
+            return await invoke('get_all_markets') as any[];
+        } catch (error) {
+            console.error('❌ Failed to get all markets:', error);
             throw error;
         }
     }

@@ -192,6 +192,7 @@ function setupBlackbookEventListeners(_rssMarkets: any[]) {
             const outcomeIdx = (e.currentTarget as HTMLElement).getAttribute('data-outcome');
             const marketId = (e.currentTarget as HTMLElement).getAttribute('data-market-id');
             const option = (e.currentTarget as HTMLElement).getAttribute('data-option');
+            const title = (e.currentTarget as HTMLElement).getAttribute('data-title');
             
             if (!marketIdx || !outcomeIdx || !marketId || !option) {
                 log('❌ Invalid bet data', 'error');
@@ -203,22 +204,165 @@ function setupBlackbookEventListeners(_rssMarkets: any[]) {
                 return;
             }
             
-            // Show amount input dialog
-            const amount = prompt(`Enter amount to bet on "${option}" (in BB):`);
-            if (!amount || isNaN(parseFloat(amount))) {
-                log('❌ Invalid bet amount', 'error');
-                return;
-            }
-            
-            try {
-                log(`🎯 Placing bet on "${option}" for ${amount} BB...`, 'info');
-                await BackendService.placeBet(marketId, selectedAccount.name, parseFloat(amount), option);
-                log(`✅ Bet placed successfully! ${amount} BB on "${option}"`, 'success');
-                await loadAccounts();
-            } catch (error) {
-                log(`❌ Bet failed: ${error}`, 'error');
-            }
+            // Show betting modal
+            showBettingModal(marketId, title || 'Unknown Market', option, selectedAccount);
         });
+    });
+}
+
+function showBettingModal(marketId: string, marketTitle: string, option: string, account: any) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById('bettingModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    const balance = account.balance || 0;
+    
+    // Create modal HTML
+    const modalHTML = `
+        <div id="bettingModal" class="betting-modal-overlay">
+            <div class="betting-modal-content">
+                <div class="betting-modal-header">
+                    <h2 class="betting-modal-title">Place Bet</h2>
+                    <button class="betting-modal-close" id="closeBettingModal">&times;</button>
+                </div>
+                
+                <div class="betting-modal-body">
+                    <div class="betting-info-section">
+                        <div class="betting-info-item">
+                            <span class="betting-info-label">Market:</span>
+                            <span class="betting-info-value">${marketTitle}</span>
+                        </div>
+                        <div class="betting-info-item">
+                            <span class="betting-info-label">Betting On:</span>
+                            <span class="betting-info-value betting-option-highlight">${option}</span>
+                        </div>
+                        <div class="betting-info-item">
+                            <span class="betting-info-label">Account:</span>
+                            <span class="betting-info-value">${account.name}</span>
+                        </div>
+                        <div class="betting-info-item">
+                            <span class="betting-info-label">Available Balance:</span>
+                            <span class="betting-info-value betting-balance">${balance.toFixed(2)} BB</span>
+                        </div>
+                    </div>
+                    
+                    <div class="betting-amount-section">
+                        <label for="betAmount" class="betting-amount-label">
+                            Bet Amount (BB)
+                        </label>
+                        <input 
+                            type="number" 
+                            id="betAmount" 
+                            class="betting-amount-input"
+                            placeholder="Enter amount..."
+                            min="0.01"
+                            max="${balance}"
+                            step="0.01"
+                        />
+                        <div class="betting-quick-amounts">
+                            <button class="betting-quick-btn" data-amount="10">10 BB</button>
+                            <button class="betting-quick-btn" data-amount="50">50 BB</button>
+                            <button class="betting-quick-btn" data-amount="100">100 BB</button>
+                            <button class="betting-quick-btn" data-amount="${balance}">MAX</button>
+                        </div>
+                        <div id="betAmountError" class="betting-amount-error" style="display: none;"></div>
+                    </div>
+                </div>
+                
+                <div class="betting-modal-footer">
+                    <button class="betting-modal-btn betting-btn-cancel" id="cancelBet">Cancel</button>
+                    <button class="betting-modal-btn betting-btn-submit" id="submitBet">Place Bet</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Insert modal into DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Get elements
+    const modal = document.getElementById('bettingModal')!;
+    const closeBtn = document.getElementById('closeBettingModal')!;
+    const cancelBtn = document.getElementById('cancelBet')!;
+    const submitBtn = document.getElementById('submitBet') as HTMLButtonElement;
+    const amountInput = document.getElementById('betAmount') as HTMLInputElement;
+    const errorDiv = document.getElementById('betAmountError')!;
+    const quickBtns = document.querySelectorAll('.betting-quick-btn');
+    
+    // Focus input
+    amountInput.focus();
+    
+    // Quick amount buttons
+    quickBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const amount = btn.getAttribute('data-amount');
+            amountInput.value = amount || '';
+            errorDiv.style.display = 'none';
+        });
+    });
+    
+    // Close handlers
+    const closeModal = () => {
+        modal.classList.add('modal-closing');
+        setTimeout(() => modal.remove(), 300);
+    };
+    
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+    
+    // Submit handler
+    submitBtn.addEventListener('click', async () => {
+        const amount = parseFloat(amountInput.value);
+        
+        // Validation
+        if (!amountInput.value || isNaN(amount)) {
+            errorDiv.textContent = 'Please enter a valid amount';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        if (amount <= 0) {
+            errorDiv.textContent = 'Amount must be greater than 0';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        if (amount > balance) {
+            errorDiv.textContent = `Insufficient balance (max: ${balance.toFixed(2)} BB)`;
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        // Disable submit button
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Placing Bet...';
+        
+        try {
+            log(`🎯 Placing bet on "${option}" for ${amount} BB...`, 'info');
+            await BackendService.placeBet(marketId, account.name, amount, option);
+            log(`✅ Bet placed successfully! ${amount} BB on "${option}"`, 'success');
+            await loadAccounts();
+            closeModal();
+        } catch (error) {
+            log(`❌ Bet failed: ${error}`, 'error');
+            errorDiv.textContent = `Failed to place bet: ${error}`;
+            errorDiv.style.display = 'block';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Place Bet';
+        }
+    });
+    
+    // Enter key to submit
+    amountInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            submitBtn.click();
+        }
     });
 }
 
@@ -577,13 +721,6 @@ function exportRecipesToCSV() {
     document.body.removeChild(link);
     
         log(`✅ Exported ${filteredRecipes.length} ledger entries to CSV`, 'success');
-}
-
-// ============================================
-// UI RENDERING
-// ============================================
-
-function renderAccounts() {
 }
 
 // ============================================

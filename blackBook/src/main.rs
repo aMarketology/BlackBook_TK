@@ -234,6 +234,12 @@ impl AppState {
         self.market_activities.push(activity);
     }
     
+    /// Log blockchain activity to terminal in real-time
+    pub fn log_blockchain_activity(&self, emoji: &str, action_type: &str, details: &str) {
+        let timestamp = chrono::Local::now().format("%H:%M:%S");
+        println!("[{}] {} {} | {}", timestamp, emoji, action_type, details);
+    }
+    
     fn create_sample_markets(&mut self) {
         // Sample Markets
         let events = vec![
@@ -433,6 +439,10 @@ async fn main() {
         .route("/transactions", get(get_all_transactions))
         .route("/ledger/stats", get(get_ledger_stats))
         
+        // Admin operations
+        .route("/admin/mint", post(admin_mint_tokens))
+        .route("/admin/set-balance", post(admin_set_balance))
+        
         // Market endpoints
         .route("/markets", get(get_markets))
         .route("/markets", post(create_market))
@@ -494,6 +504,8 @@ async fn main() {
     println!("   GET  /balance/:address - Get account balance");
     println!("   POST /deposit - Deposit funds");
     println!("   POST /transfer - Transfer between accounts");
+    println!("   POST /admin/mint - Mint tokens (admin)");
+    println!("   POST /admin/set-balance - Set account balance (admin)");
     println!("   GET  /transactions/:address - Get user transactions");
     println!("   GET  /transactions - Get all transactions");
     println!("   GET  /ledger/stats - Get ledger statistics");
@@ -547,6 +559,11 @@ async fn main() {
     println!("   • IPC (Tauri) - For desktop app, direct in-memory communication");
     println!("   • Total API Surface: {} HTTP endpoints + 27 IPC commands", 
         "40+");
+    println!("");
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("🔗 LIVE BLOCKCHAIN ACTIVITY FEED");
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("📡 Monitoring all ledger actions in real-time...");
     println!("");
     
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
@@ -617,11 +634,20 @@ async fn deposit_funds(
     let mut app_state = state.lock().unwrap();
     
     let tx_id = app_state.ledger.deposit(&payload.address, payload.amount, &payload.memo);
+    let new_balance = app_state.ledger.get_balance(&payload.address);
+    
+    // Log to terminal
+    app_state.log_blockchain_activity(
+        "💰",
+        "DEPOSIT",
+        &format!("Account: {} | Amount: {} BB | New Balance: {} BB | Memo: {}", 
+            payload.address, payload.amount, new_balance, payload.memo)
+    );
     
     Ok(Json(json!({
         "success": true,
         "transaction_id": tx_id,
-        "new_balance": app_state.ledger.get_balance(&payload.address)
+        "new_balance": new_balance
     })))
 }
 
@@ -633,14 +659,33 @@ async fn transfer_funds(
     
     match app_state.ledger.transfer(&payload.from, &payload.to, payload.amount) {
         Ok(tx_id) => {
+            let from_balance = app_state.ledger.get_balance(&payload.from);
+            let to_balance = app_state.ledger.get_balance(&payload.to);
+            
+            // Log to terminal
+            app_state.log_blockchain_activity(
+                "💸",
+                "TRANSFER",
+                &format!("{} → {} | Amount: {} BB | From Balance: {} BB | To Balance: {} BB", 
+                    payload.from, payload.to, payload.amount, from_balance, to_balance)
+            );
+            
             Ok(Json(json!({
                 "success": true,
                 "transaction_id": tx_id,
-                "from_balance": app_state.ledger.get_balance(&payload.from),
-                "to_balance": app_state.ledger.get_balance(&payload.to)
+                "from_balance": from_balance,
+                "to_balance": to_balance
             })))
         },
         Err(error) => {
+            // Log failed transfer
+            app_state.log_blockchain_activity(
+                "❌",
+                "TRANSFER_FAILED",
+                &format!("{} → {} | Amount: {} BB | Error: {}", 
+                    payload.from, payload.to, payload.amount, error)
+            );
+            
             Ok(Json(json!({
                 "success": false,
                 "error": error
@@ -673,6 +718,108 @@ async fn get_all_transactions(
         "transactions": transactions,
         "count": transactions.len()
     }))
+}
+
+// Admin mint tokens endpoint
+#[derive(Deserialize)]
+struct MintTokensRequest {
+    account: String,
+    amount: f64,
+}
+
+async fn admin_mint_tokens(
+    State(state): State<SharedState>,
+    Json(payload): Json<MintTokensRequest>
+) -> Result<Json<Value>, StatusCode> {
+    let mut app_state = state.lock().unwrap();
+    
+    match app_state.ledger.admin_mint_tokens(&payload.account, payload.amount) {
+        Ok(tx_id) => {
+            let new_balance = app_state.ledger.get_balance(&payload.account);
+            
+            // Log to terminal
+            app_state.log_blockchain_activity(
+                "🪙",
+                "TOKENS_MINTED",
+                &format!("Account: {} | Minted: {} BB | New Balance: {} BB | TX: {}", 
+                    payload.account, payload.amount, new_balance, tx_id)
+            );
+            
+            Ok(Json(json!({
+                "success": true,
+                "transaction_id": tx_id,
+                "account": payload.account,
+                "amount_minted": payload.amount,
+                "new_balance": new_balance,
+                "message": format!("Successfully minted {} BB to {}", payload.amount, payload.account)
+            })))
+        },
+        Err(error) => {
+            // Log failed mint
+            app_state.log_blockchain_activity(
+                "❌",
+                "MINT_FAILED",
+                &format!("Account: {} | Amount: {} BB | Error: {}", 
+                    payload.account, payload.amount, error)
+            );
+            
+            Ok(Json(json!({
+                "success": false,
+                "error": error
+            })))
+        }
+    }
+}
+
+// Admin set balance endpoint
+#[derive(Deserialize)]
+struct SetBalanceRequest {
+    account: String,
+    new_balance: f64,
+}
+
+async fn admin_set_balance(
+    State(state): State<SharedState>,
+    Json(payload): Json<SetBalanceRequest>
+) -> Result<Json<Value>, StatusCode> {
+    let mut app_state = state.lock().unwrap();
+    
+    let old_balance = app_state.ledger.get_balance(&payload.account);
+    
+    match app_state.ledger.admin_set_balance(&payload.account, payload.new_balance) {
+        Ok(tx_id) => {
+            // Log to terminal
+            app_state.log_blockchain_activity(
+                "⚖️",
+                "BALANCE_SET",
+                &format!("Account: {} | Old: {} BB → New: {} BB | TX: {}", 
+                    payload.account, old_balance, payload.new_balance, tx_id)
+            );
+            
+            Ok(Json(json!({
+                "success": true,
+                "transaction_id": tx_id,
+                "account": payload.account,
+                "old_balance": old_balance,
+                "new_balance": payload.new_balance,
+                "message": format!("Successfully set {} balance to {} BB", payload.account, payload.new_balance)
+            })))
+        },
+        Err(error) => {
+            // Log failed set balance
+            app_state.log_blockchain_activity(
+                "❌",
+                "SET_BALANCE_FAILED",
+                &format!("Account: {} | New Balance: {} BB | Error: {}", 
+                    payload.account, payload.new_balance, error)
+            );
+            
+            Ok(Json(json!({
+                "success": false,
+                "error": error
+            })))
+        }
+    }
 }
 
 async fn get_ledger_stats(
@@ -756,6 +903,14 @@ async fn place_bet(
                 let on_leaderboard = market.on_leaderboard;
                 let unique_bettors = market.unique_bettors.len();
                 
+                // Log to terminal
+                app_state.log_blockchain_activity(
+                    "🎲",
+                    "BET_PLACED",
+                    &format!("{} bet {} BB on \"{}\" → {} | Balance: {} BB | Bettors: {}", 
+                        payload.account, payload.amount, market_title, market_option, user_balance, unique_bettors)
+                );
+                
                 Ok(Json(json!({
                     "success": true,
                     "transaction_id": tx_id,
@@ -838,6 +993,14 @@ async fn resolve_market(
         let market = app_state.markets.get_mut(&market_id).unwrap(); // We already checked it exists
         market.is_resolved = true;
         market.winning_option = Some(winning_option);
+        
+        // Log to terminal
+        app_state.log_blockchain_activity(
+            "🏆",
+            "MARKET_RESOLVED",
+            &format!("\"{}\" | Winner: {} | Escrow: {} BB", 
+                market_title, winning_option_text, escrow_balance)
+        );
     }
     
     // For demo purposes, we'll just resolve without actual payout logic
@@ -897,6 +1060,14 @@ async fn create_market(
     );
     
     app_state.markets.insert(market_id.clone(), new_market);
+    
+    // Log to terminal
+    app_state.log_blockchain_activity(
+        "🎯",
+        "MARKET_CREATED",
+        &format!("\"{}\" | Category: {} | Options: {:?} | ID: {}", 
+            payload.title, payload.category, payload.options, market_id)
+    );
     
     Ok(Json(json!({
         "success": true,
