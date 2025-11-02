@@ -202,16 +202,26 @@ export class BackendService {
      */
     static async placeBet(marketId: string, account: string, amount: number, prediction: string): Promise<string> {
         try {
-            return await invoke('place_bet', { 
+            console.log('🔧 BackendService.placeBet called with:', { marketId, account, amount, prediction });
+            
+            const payload = { 
                 req: { 
                     market_id: marketId,
                     account, 
                     amount, 
                     prediction 
                 }
-            }) as string;
+            };
+            
+            console.log('📤 Sending to Tauri IPC:', JSON.stringify(payload));
+            
+            const result = await invoke('place_bet', payload) as string;
+            
+            console.log('📥 Received from Tauri IPC:', result);
+            
+            return result;
         } catch (error) {
-            console.error('❌ Bet placement failed:', error);
+            console.error('❌ Bet placement failed in BackendService:', error);
             throw error;
         }
     }

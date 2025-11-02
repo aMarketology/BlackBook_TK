@@ -90,42 +90,64 @@ pub fn get_balance(address: String, state: State<AppState>) -> Result<f64, Strin
 
 /// Place a bet on a market - PROXIES TO BLOCKCHAIN CORE HTTP API
 #[tauri::command]
-pub async fn place_bet(req: BetRequest, state: State<'_, AppState>) -> Result<String, String> {
+pub async fn place_bet(req: BetRequest, _state: State<'_, AppState>) -> Result<String, String> {
     let timestamp = chrono::Local::now().format("%H:%M:%S");
-    println!("[{}] 🎯 IPC→HTTP | place_bet called | Account: {}, Market: {}, Amount: {} BB, Prediction: {}", 
-        timestamp, req.account, req.market_id, req.amount, req.prediction);
+    println!("[{}] 🎯 IPC→HTTP | place_bet called", timestamp);
+    println!("   └─ Account: {}", req.account);
+    println!("   └─ Market ID: {}", req.market_id);
+    println!("   └─ Amount: {} BB", req.amount);
+    println!("   └─ Prediction: {}", req.prediction);
     
     // Call blockchain core HTTP API
     let client = reqwest::Client::new();
     let url = "http://localhost:3000/bet";
     
+    // Note: The HTTP API expects "market" and "outcome" (index)
+    // We're sending "market_id" and "prediction" (string)
+    // For now, use outcome index 0 for the prediction string
+    // TODO: Map prediction string to proper outcome index
     let payload = serde_json::json!({
         "account": req.account,
-        "market_id": req.market_id,
-        "amount": req.amount,
-        "prediction": req.prediction
+        "market": req.market_id,
+        "outcome": 0,
+        "amount": req.amount
     });
+    
+    println!("[{}] 📤 Sending to blockchain HTTP API: {}", timestamp, url);
+    println!("   └─ Payload: {}", payload);
     
     let response = client.post(url)
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("Failed to connect to blockchain: {}", e))?;
+        .map_err(|e| {
+            let err_msg = format!("Failed to connect to blockchain: {}", e);
+            println!("[{}] ❌ Connection error: {}", chrono::Local::now().format("%H:%M:%S"), err_msg);
+            err_msg
+        })?;
+    
+    let status = response.status();
+    println!("[{}] 📥 HTTP Response status: {}", timestamp, status);
     
     if response.status().is_success() {
         let result: serde_json::Value = response.json()
             .await
-            .map_err(|e| format!("Failed to parse response: {}", e))?;
+            .map_err(|e| {
+                let err_msg = format!("Failed to parse response: {}", e);
+                println!("[{}] ❌ Parse error: {}", chrono::Local::now().format("%H:%M:%S"), err_msg);
+                err_msg
+            })?;
         
         let timestamp = chrono::Local::now().format("%H:%M:%S");
-        println!("[{}] ✅ BLOCKCHAIN_VERIFIED | Bet placed successfully via HTTP API", timestamp);
+        println!("[{}] ✅ BLOCKCHAIN_VERIFIED | Bet placed successfully", timestamp);
+        println!("   └─ Response: {}", result);
         
         Ok(result.to_string())
     } else {
         let error = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
         let timestamp = chrono::Local::now().format("%H:%M:%S");
-        println!("[{}] ❌ BLOCKCHAIN_REJECTED | {}", timestamp, error);
-        Err(error)
+        println!("[{}] ❌ BLOCKCHAIN_REJECTED | Status: {} | Error: {}", timestamp, status, error);
+        Err(format!("Blockchain rejected bet ({}): {}", status, error))
     }
 }
 

@@ -124,16 +124,21 @@ class BackendService {
   }
   static async placeBet(marketId, account, amount, prediction) {
     try {
-      return await invoke("place_bet", {
+      console.log("\uD83D\uDD27 BackendService.placeBet called with:", { marketId, account, amount, prediction });
+      const payload = {
         req: {
           market_id: marketId,
           account,
           amount,
           prediction
         }
-      });
+      };
+      console.log("\uD83D\uDCE4 Sending to Tauri IPC:", JSON.stringify(payload));
+      const result = await invoke("place_bet", payload);
+      console.log("\uD83D\uDCE5 Received from Tauri IPC:", result);
+      return result;
     } catch (error) {
-      console.error("❌ Bet placement failed:", error);
+      console.error("❌ Bet placement failed in BackendService:", error);
       throw error;
     }
   }
@@ -2183,12 +2188,15 @@ function showBettingModal(marketId, marketTitle, option, account) {
     submitBtn.textContent = "Placing Bet...";
     try {
       log(`\uD83C\uDFAF Placing bet on "${option}" for ${amount} BB...`, "info");
-      await BackendService.placeBet(marketId, account.name, amount, option);
+      log(`\uD83D\uDCCB Debug - Market ID: ${marketId}, Account: ${account.name}, Amount: ${amount}, Option: ${option}`, "info");
+      const result = await BackendService.placeBet(marketId, account.name, amount, option);
       log(`✅ Bet placed successfully! ${amount} BB on "${option}"`, "success");
+      log(`\uD83D\uDCCA Backend response: ${JSON.stringify(result)}`, "info");
       await loadAccounts();
       closeModal();
     } catch (error) {
       log(`❌ Bet failed: ${error}`, "error");
+      console.error("Full error object:", error);
       errorDiv.textContent = `Failed to place bet: ${error}`;
       errorDiv.style.display = "block";
       submitBtn.disabled = false;

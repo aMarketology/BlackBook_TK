@@ -345,12 +345,18 @@ function showBettingModal(marketId: string, marketTitle: string, option: string,
         
         try {
             log(`🎯 Placing bet on "${option}" for ${amount} BB...`, 'info');
-            await BackendService.placeBet(marketId, account.name, amount, option);
+            log(`📋 Debug - Market ID: ${marketId}, Account: ${account.name}, Amount: ${amount}, Option: ${option}`, 'info');
+            
+            const result = await BackendService.placeBet(marketId, account.name, amount, option);
+            
             log(`✅ Bet placed successfully! ${amount} BB on "${option}"`, 'success');
+            log(`📊 Backend response: ${JSON.stringify(result)}`, 'info');
+            
             await loadAccounts();
             closeModal();
         } catch (error) {
             log(`❌ Bet failed: ${error}`, 'error');
+            console.error('Full error object:', error);
             errorDiv.textContent = `Failed to place bet: ${error}`;
             errorDiv.style.display = 'block';
             submitBtn.disabled = false;
