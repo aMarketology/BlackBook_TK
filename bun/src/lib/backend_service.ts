@@ -201,6 +201,34 @@ export class BackendService {
     }
 
     /**
+     * Create a new prediction market
+     */
+    static async createMarket(
+        id: string,
+        title: string,
+        description: string,
+        outcomes: string[],
+        category: string = 'polymarket',
+        resolutionSource: string = 'polymarket.com'
+    ): Promise<string> {
+        try {
+            return await invoke('create_market', {
+                req: {
+                    id,
+                    title,
+                    description,
+                    outcomes,
+                    category,
+                    resolution_source: resolutionSource
+                }
+            }) as string;
+        } catch (error) {
+            console.error('❌ Failed to create market:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Place a bet on a market
      */
     static async placeBet(marketId: string, account: string, amount: number, prediction: string): Promise<string> {

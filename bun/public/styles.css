@@ -514,6 +514,87 @@ h3 {
     margin: 12px 0;
 }
 
+/* Polymarket betting section with proper buttons */
+.polymarket-betting-section {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.polymarket-bet-btn {
+    flex: 1;
+    padding: 14px;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+    background: linear-gradient(135deg, rgba(230, 57, 70, 0.15), rgba(230, 57, 70, 0.05));
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: inherit;
+}
+
+.polymarket-bet-btn:hover {
+    border-color: var(--gold-accent);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(212, 165, 116, 0.4);
+    background: linear-gradient(135deg, rgba(230, 57, 70, 0.25), rgba(230, 57, 70, 0.15));
+}
+
+.polymarket-bet-btn:active {
+    transform: translateY(-1px);
+}
+
+.polymarket-bet-yes {
+    border-color: rgba(39, 174, 96, 0.3);
+}
+
+.polymarket-bet-yes:hover {
+    border-color: #27ae60;
+    background: linear-gradient(135deg, rgba(39, 174, 96, 0.25), rgba(39, 174, 96, 0.15));
+}
+
+.polymarket-bet-no {
+    border-color: rgba(230, 57, 70, 0.3);
+}
+
+.polymarket-bet-no:hover {
+    border-color: var(--death-red);
+    background: linear-gradient(135deg, rgba(230, 57, 70, 0.35), rgba(230, 57, 70, 0.2));
+}
+
+.bet-outcome-label {
+    font-size: 0.95rem;
+    color: var(--pale-text);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
+
+.bet-price {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gold-accent);
+}
+
+.polymarket-bet-yes .bet-price {
+    color: #2bbb3d;
+}
+
+.polymarket-bet-no .bet-price {
+    color: var(--death-red);
+}
+
+/* Old styles for non-Polymarket price displays */
+.price-column {
+    flex: 1;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+}
+
 .price-option {
     flex: 1;
     padding: 10px;

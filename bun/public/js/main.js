@@ -125,6 +125,23 @@ class BackendService {
       throw error;
     }
   }
+  static async createMarket(id, title, description, outcomes, category = "polymarket", resolutionSource = "polymarket.com") {
+    try {
+      return await invoke("create_market", {
+        req: {
+          id,
+          title,
+          description,
+          outcomes,
+          category,
+          resolution_source: resolutionSource
+        }
+      });
+    } catch (error) {
+      console.error("❌ Failed to create market:", error);
+      throw error;
+    }
+  }
   static async placeBet(marketId, account, amount, prediction) {
     try {
       console.log("\uD83D\uDD27 BackendService.placeBet called with:", { marketId, account, amount, prediction });
@@ -368,17 +385,6 @@ ${rows}`;
   }
 }
 var debugConsole = new DebugConsole;
-
-// src/lib/polymarket.ts
-function formatVolume(volume) {
-  if (volume >= 1e6) {
-    return `$${(volume / 1e6).toFixed(1)}M`;
-  }
-  if (volume >= 1000) {
-    return `$${(volume / 1000).toFixed(1)}K`;
-  }
-  return `$${volume.toFixed(0)}`;
-}
 
 // src/lib/ui_builder.ts
 class UIBuilder {
@@ -1956,9 +1962,71 @@ var price_action_default = new PriceActionModule;
 var selectedAccount = null;
 var accounts = [];
 var markets = [];
+var polymarketAMMs = new Map;
 var allRecipes = [];
 var filteredRecipes = [];
 var log = (message, type = "info") => debugConsole.log(message, type);
+function initializePolymarketAMM(marketId) {
+  const existing = polymarketAMMs.get(marketId);
+  if (existing)
+    return existing;
+  const amm = {
+    marketId,
+    yesShares: 100,
+    noShares: 100,
+    yesPrice: 50,
+    noPrice: 50,
+    totalVolume: 0
+  };
+  polymarketAMMs.set(marketId, amm);
+  log(`\uD83C\uDFE6 Initialized AMM for ${marketId}: 50¢ YES / 50¢ NO`, "info");
+  return amm;
+}
+function calculatePolymarketPrice(marketId, outcome, betAmount) {
+  const amm = polymarketAMMs.get(marketId) || initializePolymarketAMM(marketId);
+  const k = amm.yesShares * amm.noShares;
+  let newYesShares = amm.yesShares;
+  let newNoShares = amm.noShares;
+  let sharesReceived = 0;
+  if (outcome === "Yes") {
+    newNoShares = amm.noShares + betAmount;
+    newYesShares = k / newNoShares;
+    sharesReceived = amm.yesShares - newYesShares;
+  } else {
+    newYesShares = amm.yesShares + betAmount;
+    newNoShares = k / newYesShares;
+    sharesReceived = amm.noShares - newNoShares;
+  }
+  const totalShares = newYesShares + newNoShares;
+  const newYesPrice = Math.round(newNoShares / totalShares * 100);
+  const newNoPrice = 100 - newYesPrice;
+  const oldPrice = outcome === "Yes" ? amm.yesPrice : amm.noPrice;
+  const newPrice = outcome === "Yes" ? newYesPrice : newNoPrice;
+  const priceImpact = Math.abs(newPrice - oldPrice);
+  return {
+    newYesPrice,
+    newNoPrice,
+    sharesReceived,
+    priceImpact
+  };
+}
+function updatePolymarketAMM(marketId, outcome, betAmount) {
+  const result = calculatePolymarketPrice(marketId, outcome, betAmount);
+  const amm = polymarketAMMs.get(marketId);
+  const k = amm.yesShares * amm.noShares;
+  if (outcome === "Yes") {
+    amm.noShares += betAmount;
+    amm.yesShares = k / amm.noShares;
+  } else {
+    amm.yesShares += betAmount;
+    amm.noShares = k / amm.yesShares;
+  }
+  amm.yesPrice = result.newYesPrice;
+  amm.noPrice = result.newNoPrice;
+  amm.totalVolume += betAmount;
+  log(`\uD83D\uDCCA AMM Updated: ${outcome} ${result.newYesPrice}¢ / ${result.newNoPrice}¢ (Impact: +${result.priceImpact}¢)`, "success");
+  loadPolymarketEvents();
+}
 async function loadAccounts() {
   try {
     log("� Connecting to BlackBook L1...", "info");
@@ -2326,23 +2394,25 @@ async function loadPolymarketEvents() {
         if (!Array.isArray(outcomes) || outcomes.length < 2) {
           outcomes = ["Yes", "No"];
         }
-        const safePrice0 = Math.min(99, Math.max(1, Math.round((prices[0] || 0.5) * 100)));
-        const safePrice1 = Math.min(99, Math.max(1, Math.round((prices[1] || 0.5) * 100)));
+        const marketId = market.id || `poly_${idx}`;
+        const amm = polymarketAMMs.get(marketId) || initializePolymarketAMM(marketId);
+        const blackbookYesPrice = amm.yesPrice;
+        const blackbookNoPrice = amm.noPrice;
+        log(`\uD83D\uDCB0 BlackBook AMM: "${eventTitle}" - YES ${blackbookYesPrice}¢ / NO ${blackbookNoPrice}¢`, "info");
         renderedCards.push(`
-                <div class="market-card">
+                <div class="market-card polymarket-card" data-market-id="${marketId}" data-title="${eventTitle.replace(/"/g, "&quot;")}" data-description="${(eventDescription || "").replace(/"/g, "&quot;")}">
                     <h3>${eventTitle}</h3>
                     <p>${eventDescription || "Popular prediction market"}</p>
-                    <div class="market-prices">
-                        <div class="price-column">
-                            <span class="label">${String(outcomes[0]).substring(0, 20)}</span>
-                            <span class="price">${safePrice0}¢</span>
-                        </div>
-                        <div class="price-column">
-                            <span class="label">${String(outcomes[1]).substring(0, 20)}</span>
-                            <span class="price">${safePrice1}¢</span>
-                        </div>
+                    <div class="polymarket-betting-section">
+                        <button class="polymarket-bet-btn polymarket-bet-yes" data-outcome="${String(outcomes[0])}" data-price="${blackbookYesPrice}">
+                            <span class="bet-outcome-label">${String(outcomes[0])}</span>
+                            <span class="bet-price">${blackbookYesPrice}¢</span>
+                        </button>
+                        <button class="polymarket-bet-btn polymarket-bet-no" data-outcome="${String(outcomes[1])}" data-price="${blackbookNoPrice}">
+                            <span class="bet-outcome-label">${String(outcomes[1])}</span>
+                            <span class="bet-price">${blackbookNoPrice}¢</span>
+                        </button>
                     </div>
-                    <div class="market-volume">24h Vol: ${formatVolume(eventVolume)}</div>
                 </div>
             `);
       } catch (cardError) {
@@ -2353,6 +2423,7 @@ async function loadPolymarketEvents() {
     if (renderedCards.length > 0) {
       polyEl.innerHTML = renderedCards.join("");
       log(`✅ Successfully rendered ${renderedCards.length} top Polymarket events`, "success");
+      setupPolymarketEventListeners();
     } else {
       polyEl.innerHTML = '<p class="loading">No valid Polymarket events could be rendered</p>';
       log("❌ All Polymarket events failed to render", "error");
@@ -2366,6 +2437,188 @@ async function loadPolymarketEvents() {
       polyEl.innerHTML = `<p class="loading" style="color: #e63946;">${errMsg}</p>`;
     }
   }
+}
+function setupPolymarketEventListeners() {
+  const betButtons = document.querySelectorAll(".polymarket-bet-btn");
+  betButtons.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const target = e.currentTarget;
+      const card = target.closest(".polymarket-card");
+      if (!card) {
+        log("❌ Could not find parent card", "error");
+        return;
+      }
+      const marketId = card.getAttribute("data-market-id");
+      const marketTitle = card.getAttribute("data-title");
+      const outcome = target.getAttribute("data-outcome");
+      const price = target.getAttribute("data-price");
+      if (!marketId || !marketTitle || !outcome || !price) {
+        log("❌ Missing Polymarket bet data", "error");
+        return;
+      }
+      if (!selectedAccount) {
+        log("❌ Please select an account first", "error");
+        return;
+      }
+      log(`\uD83C\uDFAF Opening bet modal for "${outcome}" @ ${price}¢ on "${marketTitle}"`, "info");
+      showPolymarketBettingModal(marketId, marketTitle, outcome, price, selectedAccount);
+    });
+  });
+  log(`✅ Attached click handlers to ${betButtons.length} Polymarket bet buttons`, "success");
+}
+function showPolymarketBettingModal(marketId, marketTitle, outcome, price, account) {
+  const existingModal = document.getElementById("bettingModal");
+  if (existingModal) {
+    existingModal.remove();
+  }
+  const balance = account.balance || 0;
+  const pricePercent = parseInt(price);
+  const potentialReturn = (100 / pricePercent).toFixed(2);
+  const modalHTML = `
+        <div id="bettingModal" class="betting-modal-overlay">
+            <div class="betting-modal-content">
+                <div class="betting-modal-header">
+                    <h2 class="betting-modal-title">\uD83D\uDD2E Polymarket Bet</h2>
+                    <button class="betting-modal-close" id="closeBettingModal">&times;</button>
+                </div>
+                
+                <div class="betting-modal-body">
+                    <div class="betting-info-section">
+                        <div class="betting-info-item">
+                            <span class="betting-info-label">Market:</span>
+                            <span class="betting-info-value">${marketTitle}</span>
+                        </div>
+                        <div class="betting-info-item">
+                            <span class="betting-info-label">Betting On:</span>
+                            <span class="betting-info-value betting-option-highlight">${outcome} @ ${pricePercent}¢</span>
+                        </div>
+                        <div class="betting-info-item">
+                            <span class="betting-info-label">Potential Return:</span>
+                            <span class="betting-info-value">${potentialReturn}x</span>
+                        </div>
+                        <div class="betting-info-item">
+                            <span class="betting-info-label">Account:</span>
+                            <span class="betting-info-value">${account.name}</span>
+                        </div>
+                        <div class="betting-info-item">
+                            <span class="betting-info-label">Available Balance:</span>
+                            <span class="betting-info-value betting-balance">${balance.toFixed(2)} BB</span>
+                        </div>
+                    </div>
+                    
+                    <div class="betting-amount-section">
+                        <label for="betAmount" class="betting-amount-label">
+                            Bet Amount (BB)
+                        </label>
+                        <input 
+                            type="number" 
+                            id="betAmount" 
+                            class="betting-amount-input"
+                            placeholder="Enter amount..."
+                            min="0.01"
+                            max="${balance}"
+                            step="0.01"
+                            value=""
+                        />
+                        <div id="priceImpactInfo" class="price-impact-info" style="display: none; margin-top: 8px; padding: 8px; background: rgba(212, 165, 116, 0.1); border-radius: 4px; font-size: 0.85rem;">
+                            <div style="color: var(--gold-accent); font-weight: 600;">\uD83D\uDCCA Price Impact Preview:</div>
+                            <div id="priceImpactText" style="color: var(--pale-text); margin-top: 4px;"></div>
+                        </div>
+                        <div id="betAmountError" class="betting-amount-error" style="display: none;"></div>
+                    </div>
+                </div>
+                
+                <div class="betting-modal-footer">
+                    <button class="betting-modal-btn betting-btn-cancel" id="cancelBet">Cancel</button>
+                    <button class="betting-modal-btn betting-btn-submit" id="submitBet">Place Bet</button>
+                </div>
+            </div>
+        </div>
+    `;
+  document.body.insertAdjacentHTML("beforeend", modalHTML);
+  const modal = document.getElementById("bettingModal");
+  const closeBtn = document.getElementById("closeBettingModal");
+  const cancelBtn = document.getElementById("cancelBet");
+  const submitBtn = document.getElementById("submitBet");
+  const amountInput = document.getElementById("betAmount");
+  const errorDiv = document.getElementById("betAmountError");
+  const priceImpactInfo = document.getElementById("priceImpactInfo");
+  const priceImpactText = document.getElementById("priceImpactText");
+  amountInput.addEventListener("input", () => {
+    const amount = parseFloat(amountInput.value);
+    if (amount > 0 && priceImpactInfo && priceImpactText) {
+      const impact = calculatePolymarketPrice(marketId, outcome, amount);
+      priceImpactInfo.style.display = "block";
+      priceImpactText.innerHTML = `
+                After your bet: <strong>YES ${impact.newYesPrice}¢</strong> / <strong>NO ${impact.newNoPrice}¢</strong><br>
+                Price moves <strong style="color: var(--gold-accent);">+${impact.priceImpact}¢</strong><br>
+                You get <strong>${impact.sharesReceived.toFixed(2)}</strong> shares
+            `;
+    } else if (priceImpactInfo) {
+      priceImpactInfo.style.display = "none";
+    }
+  });
+  setTimeout(() => amountInput.focus(), 100);
+  const closeModal = () => {
+    modal.classList.add("modal-closing");
+    setTimeout(() => modal.remove(), 300);
+  };
+  closeBtn.addEventListener("click", closeModal);
+  cancelBtn.addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal)
+      closeModal();
+  });
+  submitBtn.addEventListener("click", async () => {
+    const amount = parseFloat(amountInput.value);
+    if (!amountInput.value || isNaN(amount)) {
+      errorDiv.textContent = "Please enter a valid amount";
+      errorDiv.style.display = "block";
+      return;
+    }
+    if (amount <= 0) {
+      errorDiv.textContent = "Amount must be greater than 0";
+      errorDiv.style.display = "block";
+      return;
+    }
+    if (amount > balance) {
+      errorDiv.textContent = `Insufficient balance (max: ${balance.toFixed(2)} BB)`;
+      errorDiv.style.display = "block";
+      return;
+    }
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Placing Bet...";
+    try {
+      log(`\uD83C\uDFAF Placing Polymarket bet on "${outcome}" @ ${pricePercent}¢ for ${amount} BB...`, "info");
+      try {
+        await BackendService.createMarket(marketId, marketTitle, "Polymarket prediction market", ["Yes", "No"], "polymarket", "polymarket.com");
+        log(`✅ Created BlackBook market: ${marketId}`, "success");
+      } catch (createError) {
+        const errorMsg = createError.toString();
+        if (!errorMsg.includes("already exists") && !errorMsg.includes("duplicate")) {
+          log(`⚠️ Market creation warning: ${createError}`, "warning");
+        }
+      }
+      await BackendService.placeBet(marketId, account.name, amount, outcome);
+      updatePolymarketAMM(marketId, outcome, amount);
+      log(`✅ Polymarket bet placed! ${amount} BB on "${outcome}"`, "success");
+      log(`\uD83D\uDCCA AMM updated - prices will refresh automatically`, "info");
+      await loadAccounts();
+      closeModal();
+    } catch (error) {
+      log(`❌ Bet failed: ${error}`, "error");
+      console.error("Full error object:", error);
+      errorDiv.textContent = `Failed to place bet: ${error}`;
+      errorDiv.style.display = "block";
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Place Bet";
+    }
+  });
+  amountInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      submitBtn.click();
+    }
+  });
 }
 async function placeBet(marketId, outcome, amount) {
   try {
