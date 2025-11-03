@@ -99,6 +99,71 @@ async function loadActiveMarketsFromRSS() {
     }
 }
 
+// Track last known event count for AI event monitoring
+let lastKnownEventCount = 0;
+
+async function checkForNewAIEvents() {
+    try {
+        const response = await fetch('http://localhost:3000/ai/events/recent');
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        const currentCount = data.count || 0;
+        
+        // Initialize on first check
+        if (lastKnownEventCount === 0) {
+            lastKnownEventCount = currentCount;
+            console.log(`🤖 AI Event Monitor initialized: ${currentCount} events tracked`);
+            return;
+        }
+        
+        // Check if new events were added
+        if (currentCount > lastKnownEventCount) {
+            const newEventsCount = currentCount - lastKnownEventCount;
+            const newEvents = data.events.slice(0, newEventsCount);
+            
+            // Log each new event to debug console
+            for (const event of newEvents) {
+                const status = event.added_to_ledger ? '✅ ACTIVE MARKET' : '📋 RSS ONLY';
+                const confidence = (event.event.confidence * 100).toFixed(1);
+                
+                debugConsole.log(
+                    `🤖 NEW AI EVENT: ${status} | ${event.event.title} (${confidence}% confidence) from ${event.source.domain}`,
+                    event.added_to_ledger ? 'success' : 'info'
+                );
+                
+                console.log(`🤖 New AI Event Posted:`, {
+                    title: event.event.title,
+                    category: event.event.category,
+                    confidence: event.event.confidence,
+                    source: event.source.domain,
+                    addedToLedger: event.added_to_ledger,
+                    marketId: event.market_id
+                });
+            }
+            
+            // Update the counter
+            lastKnownEventCount = currentCount;
+            
+            // Reload markets to show new events
+            await loadActiveMarketsFromRSS();
+            
+            debugConsole.log(`📡 RSS feed updated with ${newEventsCount} new event(s)`, 'info');
+        }
+        
+    } catch (error) {
+        // Silently fail - don't spam console if API is down
+        console.debug('AI event check failed:', error);
+    }
+}
+
+function startAIEventMonitoring() {
+    // Check for new AI events every 10 seconds
+    console.log('🤖 Starting AI Event Monitor (checking every 10s)...');
+    checkForNewAIEvents(); // Initial check
+    setInterval(checkForNewAIEvents, 10000);
+}
+
 function renderActiveMarkets(rssMarkets: any[]) {
     // Render to the new "Active BlackBook Events" section with betting
     renderBlackbookEvents(rssMarkets);
@@ -260,13 +325,8 @@ function showBettingModal(marketId: string, marketTitle: string, option: string,
                             min="0.01"
                             max="${balance}"
                             step="0.01"
+                            value=""
                         />
-                        <div class="betting-quick-amounts">
-                            <button type="button" class="betting-quick-btn" data-amount="10">10 BB</button>
-                            <button type="button" class="betting-quick-btn" data-amount="50">50 BB</button>
-                            <button type="button" class="betting-quick-btn" data-amount="100">100 BB</button>
-                            <button type="button" class="betting-quick-btn" data-amount="${balance}">MAX</button>
-                        </div>
                         <div id="betAmountError" class="betting-amount-error" style="display: none;"></div>
                     </div>
                 </div>
@@ -289,19 +349,9 @@ function showBettingModal(marketId: string, marketTitle: string, option: string,
     const submitBtn = document.getElementById('submitBet') as HTMLButtonElement;
     const amountInput = document.getElementById('betAmount') as HTMLInputElement;
     const errorDiv = document.getElementById('betAmountError')!;
-    const quickBtns = document.querySelectorAll('.betting-quick-btn');
     
     // Focus input
-    amountInput.focus();
-    
-    // Quick amount buttons
-    quickBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const amount = btn.getAttribute('data-amount');
-            amountInput.value = amount || '';
-            errorDiv.style.display = 'none';
-        });
-    });
+    setTimeout(() => amountInput.focus(), 100);
     
     // Close handlers
     const closeModal = () => {
@@ -806,7 +856,9 @@ function selectAccount(accountName: string) {
     }
     UIBuilder.updateSelectedAccount(selectedAccount);
     updateAccountsToggleDisplay();
+    updatePriceActionAccountDisplay();
     closeAccountsDropdown();
+    closePriceActionAccountsDropdown();
 }
 
 function updateAccountsToggleDisplay() {
@@ -814,6 +866,18 @@ function updateAccountsToggleDisplay() {
     const displayName = document.getElementById('selectedAccountName');
     
     if (toggleBtn && displayName) {
+        if (selectedAccount) {
+            displayName.textContent = selectedAccount.name;
+        } else {
+            displayName.textContent = 'Select Account';
+        }
+    }
+}
+
+function updatePriceActionAccountDisplay() {
+    const displayName = document.getElementById('selectedAccountNamePriceAction');
+    
+    if (displayName) {
         if (selectedAccount) {
             displayName.textContent = selectedAccount.name;
         } else {
@@ -836,9 +900,29 @@ function toggleAccountsDropdown() {
     }
 }
 
+function togglePriceActionAccountsDropdown() {
+    const dropdown = document.getElementById('accountsDropdownPriceAction');
+    const toggle = document.getElementById('accountsTogglePriceAction');
+    
+    if (dropdown && toggle) {
+        dropdown.classList.toggle('hidden');
+        toggle.classList.toggle('active');
+    }
+}
+
 function closeAccountsDropdown() {
     const dropdown = document.getElementById('accountsDropdown');
     const toggle = document.getElementById('accountsToggle');
+    
+    if (dropdown && toggle) {
+        dropdown.classList.add('hidden');
+        toggle.classList.remove('active');
+    }
+}
+
+function closePriceActionAccountsDropdown() {
+    const dropdown = document.getElementById('accountsDropdownPriceAction');
+    const toggle = document.getElementById('accountsTogglePriceAction');
     
     if (dropdown && toggle) {
         dropdown.classList.add('hidden');
@@ -944,6 +1028,9 @@ async function init() {
         await loadMarkets();
         await loadActiveMarketsFromRSS();
         
+        // Start monitoring for new AI events
+        startAIEventMonitoring();
+        
         // Fetch real market prices and Polymarket data
         await updatePrices();
         await loadPolymarketEvents();
@@ -987,6 +1074,23 @@ function setupEventListeners() {
     const accountsList = document.getElementById('accountsList');
     if (accountsList) {
         accountsList.addEventListener('click', (e: any) => {
+            if (e.target.classList.contains('account-item')) {
+                const accountName = e.target.dataset.account;
+                selectAccount(accountName);
+            }
+        });
+    }
+    
+    // Price Action accounts dropdown toggle
+    const togglePriceAction = document.getElementById('accountsTogglePriceAction');
+    if (togglePriceAction) {
+        togglePriceAction.addEventListener('click', togglePriceActionAccountsDropdown);
+    }
+    
+    // Price Action account selection
+    const accountsListPriceAction = document.getElementById('accountsListPriceAction');
+    if (accountsListPriceAction) {
+        accountsListPriceAction.addEventListener('click', (e: any) => {
             if (e.target.classList.contains('account-item')) {
                 const accountName = e.target.dataset.account;
                 selectAccount(accountName);
@@ -1063,13 +1167,118 @@ function setupEventListeners() {
         exportCSVBtn.addEventListener('click', exportRecipesToCSV);
     }
     
+    // === Price Action Event Listeners ===
+    setupPriceActionListeners();
+    
     // TransfersModule handles all transfer form event listeners
     
     // Close dropdown when clicking outside
     document.addEventListener('click', (e: any) => {
-        const selector = document.querySelector('.accounts-selector');
-        if (selector && !selector.contains(e.target)) {
+        const mainSelector = document.getElementById('accountsToggle')?.parentElement;
+        const priceActionSelector = document.getElementById('accountsTogglePriceAction')?.parentElement;
+        
+        if (mainSelector && !mainSelector.contains(e.target)) {
             closeAccountsDropdown();
+        }
+        
+        if (priceActionSelector && !priceActionSelector.contains(e.target)) {
+            closePriceActionAccountsDropdown();
+        }
+    });
+}
+
+function setupPriceActionListeners() {
+    console.log('🔧 Setting up Price Action event listeners...');
+    
+    // Price card selection
+    const btcCard = document.querySelector('#selectBtcCard');
+    const solCard = document.querySelector('#selectSolCard');
+    
+    console.log('🔍 Found cards:', { btc: !!btcCard, sol: !!solCard });
+    
+    btcCard?.addEventListener('click', () => {
+        console.log('₿ Bitcoin card clicked');
+        debugConsole.log('₿ Bitcoin selected', 'info');
+        btcCard.classList.add('active-asset');
+        solCard?.classList.remove('active-asset');
+    });
+    
+    solCard?.addEventListener('click', () => {
+        console.log('◎ Solana card clicked');
+        debugConsole.log('◎ Solana selected', 'info');
+        solCard.classList.add('active-asset');
+        btcCard?.classList.remove('active-asset');
+    });
+    
+    // Timeframe buttons
+    const time1min = document.querySelector('#timeframe1min');
+    const time15min = document.querySelector('#timeframe15min');
+    
+    time1min?.addEventListener('click', () => {
+        console.log('⏱️ 1 minute selected');
+        debugConsole.log('⏱️ 1 minute selected', 'info');
+        time1min.classList.add('active');
+        time15min?.classList.remove('active');
+    });
+    
+    time15min?.addEventListener('click', () => {
+        console.log('⏱️ 15 minutes selected');
+        debugConsole.log('⏱️ 15 minutes selected', 'info');
+        time15min.classList.add('active');
+        time1min?.classList.remove('active');
+    });
+    
+    // Direction buttons
+    const higherBtn = document.querySelector('#predictHigher');
+    const lowerBtn = document.querySelector('#predictLower');
+    
+    higherBtn?.addEventListener('click', () => {
+        console.log('📈 Higher selected');
+        debugConsole.log('📈 Higher selected', 'info');
+        higherBtn.classList.add('active');
+        lowerBtn?.classList.remove('active');
+    });
+    
+    lowerBtn?.addEventListener('click', () => {
+        console.log('📉 Lower selected');
+        debugConsole.log('📉 Lower selected', 'info');
+        lowerBtn.classList.add('active');
+        higherBtn?.classList.remove('active');
+    });
+    
+    // Bet button
+    const betBtn = document.querySelector('#placePriceActionBet');
+    betBtn?.addEventListener('click', async () => {
+        console.log('🎲 BET BUTTON CLICKED');
+        
+        const selectedCard = document.querySelector('.price-card.active-asset');
+        const selectedAsset = selectedCard?.getAttribute('data-asset') as 'BTC' | 'SOL';
+        const selectedTime = document.querySelector('.option-btn[data-time].active')?.getAttribute('data-time');
+        const selectedDirection = document.querySelector('.option-btn[data-direction].active')?.getAttribute('data-direction') as 'HIGHER' | 'LOWER';
+        const betAmountInput = document.querySelector('#betAmount') as HTMLInputElement;
+        const amount = parseFloat(betAmountInput?.value || '10');
+        
+        console.log('Bet Details:', { asset: selectedAsset, time: selectedTime, direction: selectedDirection, amount });
+        debugConsole.log(`🎲 Placing bet: ${amount} BB on ${selectedAsset} ${selectedDirection} (${selectedTime}s)`, 'info');
+        
+        if (!selectedAsset || !selectedDirection || !selectedTime) {
+            debugConsole.log('❌ Please select asset, direction and timeframe', 'error');
+            return;
+        }
+        
+        if (!selectedAccount) {
+            debugConsole.log('❌ Please select an account first', 'error');
+            return;
+        }
+        
+        try {
+            const duration = parseInt(selectedTime) as 60 | 900;
+            // Call PriceActionModule to place the bet
+            await PriceActionModule.placePriceBet(selectedAsset, selectedDirection, amount, duration, selectedAccount.name, selectedAccount.address);
+            debugConsole.log(`✅ Bet placed successfully`, 'success');
+        } catch (error) {
+            console.error('Bet placement error:', error);
+            debugConsole.log(`❌ Bet failed: ${error}`, 'error');
         }
     });
 }

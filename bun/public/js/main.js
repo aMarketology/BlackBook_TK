@@ -1,4 +1,4 @@
-// bun/node_modules/@tauri-apps/api/tauri.js
+// node_modules/@tauri-apps/api/tauri.js
 function uid() {
   return window.crypto.getRandomValues(new Uint32Array(1))[0];
 }
@@ -36,7 +36,7 @@ async function invoke(cmd, args = {}) {
   });
 }
 
-// bun/src/lib/backend_service.ts
+// src/lib/backend_service.ts
 class BackendService {
   static async getAllAccounts() {
     try {
@@ -155,17 +155,17 @@ class BackendService {
       throw error;
     }
   }
-  static async recordBetWin(account, amount, betId) {
+  static async recordBetWin(address, amount, betId) {
     try {
-      await invoke("record_bet_win", { account, amount, betId });
+      await invoke("record_bet_win", { address, amount, betId });
     } catch (error) {
       console.error("❌ Record bet win failed:", error);
       throw error;
     }
   }
-  static async recordBetLoss(account, amount, betId) {
+  static async recordBetLoss(address, amount, betId) {
     try {
-      await invoke("record_bet_loss", { account, amount, betId });
+      await invoke("record_bet_loss", { address, amount, betId });
     } catch (error) {
       console.error("❌ Record bet loss failed:", error);
       throw error;
@@ -237,7 +237,7 @@ class BackendService {
   }
 }
 
-// bun/src/lib/debug_console.ts
+// src/lib/debug_console.ts
 class DebugConsole {
   messages = [];
   maxMessages = 100;
@@ -369,7 +369,7 @@ ${rows}`;
 }
 var debugConsole = new DebugConsole;
 
-// bun/src/lib/polymarket.ts
+// src/lib/polymarket.ts
 function formatVolume(volume) {
   if (volume >= 1e6) {
     return `$${(volume / 1e6).toFixed(1)}M`;
@@ -380,7 +380,7 @@ function formatVolume(volume) {
   return `$${volume.toFixed(0)}`;
 }
 
-// bun/src/lib/ui_builder.ts
+// src/lib/ui_builder.ts
 class UIBuilder {
   static buildApp() {
     const container = document.createElement("div");
@@ -839,33 +839,68 @@ class UIBuilder {
     page.className = "page";
     const pageHeader = document.createElement("div");
     pageHeader.className = "page-header";
-    pageHeader.innerHTML = `
+    const headerContent = document.createElement("div");
+    headerContent.className = "header-content";
+    headerContent.style.display = "flex";
+    headerContent.style.justifyContent = "space-between";
+    headerContent.style.alignItems = "center";
+    headerContent.style.width = "100%";
+    const headerLeft = document.createElement("div");
+    headerLeft.style.display = "flex";
+    headerLeft.style.alignItems = "center";
+    headerLeft.style.gap = "15px";
+    headerLeft.innerHTML = `
             <button class="back-btn" id="backFromPriceActionBtn">← Back</button>
             <h2>⚡ Price Action</h2>
         `;
+    const headerRight = document.createElement("div");
+    headerRight.className = "header-right";
+    const accountsSelector = document.createElement("div");
+    accountsSelector.className = "accounts-selector";
+    const toggleBtn = document.createElement("button");
+    toggleBtn.id = "accountsTogglePriceAction";
+    toggleBtn.className = "accounts-toggle";
+    toggleBtn.innerHTML = `
+            <span id="selectedAccountNamePriceAction">Select Account</span>
+            <span class="dropdown-arrow">▼</span>
+        `;
+    const dropdown = document.createElement("div");
+    dropdown.id = "accountsDropdownPriceAction";
+    dropdown.className = "accounts-dropdown hidden";
+    const accountsList = document.createElement("div");
+    accountsList.id = "accountsListPriceAction";
+    accountsList.className = "accounts-list";
+    accountsList.innerHTML = '<p class="loading">Loading accounts...</p>';
+    dropdown.appendChild(accountsList);
+    accountsSelector.appendChild(toggleBtn);
+    accountsSelector.appendChild(dropdown);
+    headerRight.appendChild(accountsSelector);
+    headerContent.appendChild(headerLeft);
+    headerContent.appendChild(headerRight);
+    pageHeader.appendChild(headerContent);
     page.appendChild(pageHeader);
     const pageContent = document.createElement("div");
     pageContent.className = "page-content";
     pageContent.innerHTML = `
             <div class="price-action-grid">
-                <!-- Live Prices Row -->
+                <!-- Live Prices Row - CLICKABLE CARDS -->
                 <div class="price-row">
-                    <div class="price-card btc">
+                    <div class="price-card btc selectable-card active-asset" id="selectBtcCard" data-asset="BTC">
                         <div class="coin-info">
                             <span class="coin-icon">₿</span>
                             <div>
-                                <div class="coin-name">Bitcoin</div>
+                                <div class="coin-name">BITCOIN</div>
                                 <div class="coin-price" id="btcPriceAction">$0.00</div>
                             </div>
                         </div>
                         <div class="price-change" id="btcChange">+0.00%</div>
                     </div>
                     
-                    <div class="price-card sol">
+                    <div class="price-card sol selectable-card" id="selectSolCard" data-asset="SOL">
                         <div class="coin-info">
                             <span class="coin-icon">◎</span>
                             <div>
-                                <div class="coin-name">Solana</div>
+                                <div class="coin-name">SOLANA</div>
                                 <div class="coin-price" id="solPriceAction">$0.00</div>
                             </div>
                         </div>
@@ -881,18 +916,9 @@ class UIBuilder {
                     </div>
                     
                     <div class="bet-form-compact">
-                        <!-- Asset + Timeframe + Direction in one row -->
                         <div class="bet-options-row">
                             <div class="option-group">
-                                <label>Asset:</label>
-                                <div class="btn-group">
-                                    <button class="option-btn active" id="selectBitcoin" data-asset="bitcoin">₿</button>
-                                    <button class="option-btn" id="selectSolana" data-asset="solana">◎</button>
-                                </div>
-                            </div>
-                            
-                            <div class="option-group">
-                                <label>Time:</label>
+                                <span class="option-label">Time:</span>
                                 <div class="btn-group">
                                     <button class="option-btn active" id="timeframe1min" data-time="60">1m</button>
                                     <button class="option-btn" id="timeframe15min" data-time="900">15m</button>
@@ -900,17 +926,17 @@ class UIBuilder {
                             </div>
                             
                             <div class="option-group">
-                                <label>Direction:</label>
+                                <span class="option-label">Direction:</span>
                                 <div class="btn-group">
-                                    <button class="option-btn direction-up" id="predictHigher">\uD83D\uDCC8</button>
-                                    <button class="option-btn direction-down" id="predictLower">\uD83D\uDCC9</button>
+                                    <button class="option-btn direction-up" id="predictHigher" data-direction="HIGHER">\uD83D\uDCC8</button>
+                                    <button class="option-btn direction-down" id="predictLower" data-direction="LOWER">\uD83D\uDCC9</button>
                                 </div>
                             </div>
                             
                             <div class="option-group">
-                                <label>Amount:</label>
+                                <span class="option-label">Amount:</span>
                                 <input type="number" id="betAmount" class="amount-input" 
-                                    placeholder="BB" min="1" step="1">
+                                    placeholder="BB" min="1" step="1" value="10">
                             </div>
                             
                             <button class="bet-submit-btn" id="placePriceActionBet">
@@ -1051,6 +1077,7 @@ class UIBuilder {
   }
   static populateAccountsList(accounts) {
     const accountsList = document.getElementById("accountsList");
+    const accountsListPriceAction = document.getElementById("accountsListPriceAction");
     if (!accountsList) {
       console.log("❌ accountsList element not found");
       return;
@@ -1059,6 +1086,9 @@ class UIBuilder {
     if (accounts.length === 0) {
       console.log("⚠️ No accounts to populate");
       accountsList.innerHTML = '<p class="empty-state">No accounts available</p>';
+      if (accountsListPriceAction) {
+        accountsListPriceAction.innerHTML = '<p class="empty-state">No accounts available</p>';
+      }
       return;
     }
     const html = accounts.map((account) => `
@@ -1069,6 +1099,10 @@ class UIBuilder {
         `).join("");
     console.log("✅ Setting accountsList innerHTML with", accounts.length, "accounts");
     accountsList.innerHTML = html;
+    if (accountsListPriceAction) {
+      accountsListPriceAction.innerHTML = html;
+      console.log("✅ Also populated Price Action accounts list");
+    }
   }
   static populateTransferSelects(accounts) {
     const fromSelect = document.getElementById("transferFrom");
@@ -1117,7 +1151,7 @@ class UIBuilder {
   }
 }
 
-// bun/src/lib/transfers.ts
+// src/lib/transfers.ts
 class TransfersModule {
   static accounts = [];
   static onTransferComplete = null;
@@ -1621,12 +1655,18 @@ class TransfersModule {
 }
 var transfers_default = TransfersModule;
 
-// bun/src/lib/price_action.ts
+// src/lib/price_action.ts
 class PriceActionModule {
   activeBets = new Map;
   currentPrices = { btc: 0, sol: 0 };
   initialize(_accounts) {
     this.startPriceUpdates();
+    this.startCountdownTimer();
+  }
+  startCountdownTimer() {
+    setInterval(() => {
+      this.renderActiveBets();
+    }, 1000);
   }
   async startPriceUpdates() {
     setInterval(async () => {
@@ -1666,15 +1706,35 @@ class PriceActionModule {
     }
     console.log(`\uD83D\uDCCA Updated price display - BTC: $${this.currentPrices.btc}, SOL: $${this.currentPrices.sol}`);
   }
-  async placePriceBet(asset, direction, amount, duration, account) {
+  getStandardizedEndTime(duration) {
+    const now = new Date;
+    if (duration === 60) {
+      const nextMinute = new Date(now);
+      nextMinute.setSeconds(0, 0);
+      nextMinute.setMinutes(nextMinute.getMinutes() + 1);
+      return nextMinute.getTime();
+    } else {
+      const minutes = now.getMinutes();
+      const nextQuarter = Math.ceil((minutes + 1) / 15) * 15;
+      const nextInterval = new Date(now);
+      nextInterval.setMinutes(nextQuarter, 0, 0);
+      if (nextQuarter >= 60) {
+        nextInterval.setHours(nextInterval.getHours() + 1);
+      }
+      return nextInterval.getTime();
+    }
+  }
+  async placePriceBet(asset, direction, amount, duration, account, accountAddress) {
     const betId = `price_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const startPrice = asset === "BTC" ? this.currentPrices.btc : this.currentPrices.sol;
     const startTime = Date.now();
-    const endTime = startTime + duration * 1000;
+    const endTime = this.getStandardizedEndTime(duration);
+    const actualDuration = Math.ceil((endTime - startTime) / 1000);
     const bet = {
       id: betId,
       asset,
       account,
+      accountAddress,
       direction,
       amount,
       startPrice,
@@ -1685,14 +1745,14 @@ class PriceActionModule {
       status: "ACTIVE"
     };
     try {
-      const marketId = `${asset}_${direction}_${duration}`;
-      await BackendService.placeBet(marketId, account, amount, direction);
+      console.log(`\uD83D\uDCB0 Deducting ${amount} BB from ${account} (${accountAddress}) for price action bet`);
+      console.log(`⏰ Bet will resolve at: ${new Date(endTime).toLocaleTimeString()} (${actualDuration}s from now)`);
       this.activeBets.set(betId, bet);
       this.renderActiveBets();
-      debugConsole.log(`\uD83C\uDFAF Price bet placed: ${amount} BB on ${asset} ${direction} (${duration}s)`, "success");
+      debugConsole.log(`\uD83C\uDFAF ${account} placed bet: ${amount} BB on ${asset} ${direction} - Resolves at ${new Date(endTime).toLocaleTimeString()}`, "success");
       setTimeout(() => {
         this.resolveBet(betId);
-      }, duration * 1000);
+      }, actualDuration * 1000);
     } catch (error) {
       debugConsole.log(`❌ Failed to place price bet: ${error}`, "error");
       throw error;
@@ -1710,15 +1770,15 @@ class PriceActionModule {
     if (won) {
       const payout = bet.amount * 2;
       try {
-        await BackendService.recordBetWin(bet.account, payout, betId);
-        debugConsole.log(`\uD83C\uDF89 Price bet WON! ${bet.asset} went ${bet.direction}. Payout: ${payout} BB`, "success");
+        await BackendService.recordBetWin(bet.accountAddress, payout, betId);
+        debugConsole.log(`\uD83C\uDF89 ${bet.account} WON! ${bet.asset} went ${bet.direction}. Payout: ${payout} BB`, "success");
       } catch (error) {
         debugConsole.log(`❌ Failed to record win: ${error}`, "error");
       }
     } else {
       try {
-        await BackendService.recordBetLoss(bet.account, bet.amount, betId);
-        debugConsole.log(`❌ Price bet LOST. ${bet.asset} went ${priceIncreased ? "HIGHER" : "LOWER"}`, "error");
+        await BackendService.recordBetLoss(bet.accountAddress, bet.amount, betId);
+        debugConsole.log(`❌ ${bet.account} LOST! ${bet.asset} went ${priceIncreased ? "HIGHER" : "LOWER"}. Lost: ${bet.amount} BB`, "error");
       } catch (error) {
         debugConsole.log(`❌ Failed to record loss: ${error}`, "error");
       }
@@ -1734,12 +1794,15 @@ class PriceActionModule {
     }
   }
   renderActiveBets() {
-    const container = document.getElementById("activePriceBets");
-    if (!container)
+    const container = document.getElementById("activeBetsList");
+    if (!container) {
+      console.log("❌ activeBetsList container not found");
       return;
+    }
     const bets = Array.from(this.activeBets.values()).sort((a, b) => b.startTime - a.startTime).slice(0, 10);
+    console.log(`\uD83D\uDCCA Rendering ${bets.length} active bets`);
     if (bets.length === 0) {
-      container.innerHTML = '<p class="empty-state">No active price bets</p>';
+      container.innerHTML = '<p class="empty-state">No active bets</p>';
       return;
     }
     container.innerHTML = bets.map((bet) => {
@@ -1800,131 +1863,96 @@ class PriceActionModule {
                 <p class="subtitle">Bet on Bitcoin and Solana price movements</p>
             </div>
 
-            <div class="price-grid">
-                <!-- Bitcoin Card -->
-                <div class="price-card">
-                    <div class="price-header">
-                        <h3>₿ Bitcoin</h3>
-                        <div class="current-price">
-                            <span class="price-label">Current Price</span>
-                            <span class="price-value" id="btcCurrentPrice">$0.00</span>
+            <div class="price-action-grid">
+                <!-- Live Prices Row - CLICKABLE CARDS -->
+                <div class="price-row">
+                    <div class="price-card btc selectable-card active-asset" id="selectBtcCard" data-asset="BTC">
+                        <div class="coin-info">
+                            <span class="coin-icon">₿</span>
+                            <div>
+                                <div class="coin-name">BITCOIN</div>
+                                <div class="coin-price" id="btcCurrentPrice">$0.00</div>
+                            </div>
                         </div>
+                        <div class="price-change" id="btcChange">+0.00%</div>
                     </div>
+                    
+                    <div class="price-card sol selectable-card" id="selectSolCard" data-asset="SOL">
+                        <div class="coin-info">
+                            <span class="coin-icon">◎</span>
+                            <div>
+                                <div class="coin-name">SOLANA</div>
+                                <div class="coin-price" id="solCurrentPrice">$0.00</div>
+                            </div>
+                        </div>
+                        <div class="price-change" id="solChange">+0.00%</div>
+                    </div>
+                </div>
 
-                    <div class="betting-panel">
-                        <h4>Place Bet</h4>
+                <!-- Betting Panel -->
+                <div class="compact-bet-panel">
+                    <div class="panel-title">
+                        <span>\uD83C\uDFAF</span>
+                        <h3>Place Bet</h3>
+                    </div>
+                    
+                    <div class="bet-form-compact">
+                        <div class="bet-options-row">
+                            <div class="option-group">
+                                <span class="option-label">Time:</span>
+                                <div class="btn-group">
+                                    <button class="option-btn active" id="timeframe1min" data-time="60">1m</button>
+                                    <button class="option-btn" id="timeframe15min" data-time="900">15m</button>
+                                </div>
+                            </div>
+                            
+                            <div class="option-group">
+                                <span class="option-label">Direction:</span>
+                                <div class="btn-group">
+                                    <button class="option-btn direction-up" id="predictHigher" data-direction="HIGHER">\uD83D\uDCC8</button>
+                                    <button class="option-btn direction-down" id="predictLower" data-direction="LOWER">\uD83D\uDCC9</button>
+                                </div>
+                            </div>
+                            
+                            <div class="option-group">
+                                <span class="option-label">Amount:</span>
+                                <input type="number" id="betAmount" class="amount-input" 
+                                    placeholder="BB" min="1" step="1" value="10">
+                            </div>
+                            
+                            <button class="bet-submit-btn" id="placePriceActionBet">\uD83C\uDFB2 Bet</button>
+                        </div>
                         
-                        <div class="direction-buttons">
-                            <button class="btn-direction higher" data-asset="BTC" data-direction="HIGHER">
-                                \uD83D\uDCC8 HIGHER
-                            </button>
-                            <button class="btn-direction lower" data-asset="BTC" data-direction="LOWER">
-                                \uD83D\uDCC9 LOWER
-                            </button>
-                        </div>
-
-                        <div class="timeframe-buttons">
-                            <button class="btn-timeframe" data-duration="60">1 Minute</button>
-                            <button class="btn-timeframe active" data-duration="900">15 Minutes</button>
-                        </div>
-
-                        <div class="amount-input-group">
-                            <label>Bet Amount (BB)</label>
-                            <input type="number" id="btcBetAmount" class="amount-input" placeholder="10" min="1" value="10">
+                        <div class="balance-hint">
+                            Balance: <span id="availableBalance">0 BB</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Solana Card -->
-                <div class="price-card">
-                    <div class="price-header">
-                        <h3>◎ Solana</h3>
-                        <div class="current-price">
-                            <span class="price-label">Current Price</span>
-                            <span class="price-value" id="solCurrentPrice">$0.00</span>
+                <!-- Active Bets & History -->
+                <div class="bets-panels-row">
+                    <div class="panel-half">
+                        <h3>\uD83D\uDCCA Active Bets</h3>
+                        <div id="activePriceBets" class="compact-bets-list">
+                            <p class="empty-state">No active bets</p>
                         </div>
                     </div>
-
-                    <div class="betting-panel">
-                        <h4>Place Bet</h4>
-                        
-                        <div class="direction-buttons">
-                            <button class="btn-direction higher" data-asset="SOL" data-direction="HIGHER">
-                                \uD83D\uDCC8 HIGHER
-                            </button>
-                            <button class="btn-direction lower" data-asset="SOL" data-direction="LOWER">
-                                \uD83D\uDCC9 LOWER
-                            </button>
-                        </div>
-
-                        <div class="timeframe-buttons">
-                            <button class="btn-timeframe" data-duration="60">1 Minute</button>
-                            <button class="btn-timeframe active" data-duration="900">15 Minutes</button>
-                        </div>
-
-                        <div class="amount-input-group">
-                            <label>Bet Amount (BB)</label>
-                            <input type="number" id="solBetAmount" class="amount-input" placeholder="10" min="1" value="10">
+                    
+                    <div class="panel-half">
+                        <h3>\uD83D\uDCDC History</h3>
+                        <div id="betHistory" class="compact-bets-list">
+                            <p class="empty-state">No history</p>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <div class="active-bets-section">
-                <h3>\uD83C\uDFAF Active Bets</h3>
-                <div id="activePriceBets" class="active-bets-grid">
-                    <p class="empty-state">No active price bets</p>
                 </div>
             </div>
         `;
-    this.setupEventListeners(container);
     return container;
-  }
-  setupEventListeners(container) {
-    container.querySelectorAll(".btn-timeframe").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        const target = e.target;
-        const card = target.closest(".price-card");
-        if (!card)
-          return;
-        card.querySelectorAll(".btn-timeframe").forEach((b) => b.classList.remove("active"));
-        target.classList.add("active");
-      });
-    });
-    container.querySelectorAll(".btn-direction").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        const target = e.target;
-        const asset = target.dataset.asset;
-        const direction = target.dataset.direction;
-        const card = target.closest(".price-card");
-        if (!card)
-          return;
-        const activeTimeframe = card.querySelector(".btn-timeframe.active");
-        const duration = parseInt(activeTimeframe?.dataset.duration || "900");
-        const amountInput = card.querySelector(".amount-input");
-        const amount = parseFloat(amountInput.value || "10");
-        if (isNaN(amount) || amount <= 0) {
-          debugConsole.log("❌ Invalid bet amount", "error");
-          return;
-        }
-        const selectedAccountEl = document.getElementById("selectedAccountName");
-        const accountName = selectedAccountEl?.textContent;
-        if (!accountName || accountName === "Select Account") {
-          debugConsole.log("❌ Please select an account first", "error");
-          return;
-        }
-        try {
-          await this.placePriceBet(asset, direction, amount, duration, accountName);
-        } catch (error) {
-          debugConsole.log(`❌ Bet failed: ${error}`, "error");
-        }
-      });
-    });
   }
 }
 var price_action_default = new PriceActionModule;
 
-// bun/src/main.ts
+// src/main.ts
 var selectedAccount = null;
 var accounts = [];
 var markets = [];
@@ -1971,6 +1999,48 @@ async function loadActiveMarketsFromRSS() {
     console.error("❌ Failed to load RSS markets:", error);
     log(`⚠️ Could not load active markets: ${error}`, "warning");
   }
+}
+var lastKnownEventCount = 0;
+async function checkForNewAIEvents() {
+  try {
+    const response = await fetch("http://localhost:3000/ai/events/recent");
+    if (!response.ok)
+      return;
+    const data = await response.json();
+    const currentCount = data.count || 0;
+    if (lastKnownEventCount === 0) {
+      lastKnownEventCount = currentCount;
+      console.log(`\uD83E\uDD16 AI Event Monitor initialized: ${currentCount} events tracked`);
+      return;
+    }
+    if (currentCount > lastKnownEventCount) {
+      const newEventsCount = currentCount - lastKnownEventCount;
+      const newEvents = data.events.slice(0, newEventsCount);
+      for (const event of newEvents) {
+        const status = event.added_to_ledger ? "✅ ACTIVE MARKET" : "\uD83D\uDCCB RSS ONLY";
+        const confidence = (event.event.confidence * 100).toFixed(1);
+        debugConsole.log(`\uD83E\uDD16 NEW AI EVENT: ${status} | ${event.event.title} (${confidence}% confidence) from ${event.source.domain}`, event.added_to_ledger ? "success" : "info");
+        console.log(`\uD83E\uDD16 New AI Event Posted:`, {
+          title: event.event.title,
+          category: event.event.category,
+          confidence: event.event.confidence,
+          source: event.source.domain,
+          addedToLedger: event.added_to_ledger,
+          marketId: event.market_id
+        });
+      }
+      lastKnownEventCount = currentCount;
+      await loadActiveMarketsFromRSS();
+      debugConsole.log(`\uD83D\uDCE1 RSS feed updated with ${newEventsCount} new event(s)`, "info");
+    }
+  } catch (error) {
+    console.debug("AI event check failed:", error);
+  }
+}
+function startAIEventMonitoring() {
+  console.log("\uD83E\uDD16 Starting AI Event Monitor (checking every 10s)...");
+  checkForNewAIEvents();
+  setInterval(checkForNewAIEvents, 1e4);
 }
 function renderActiveMarkets(rssMarkets) {
   renderBlackbookEvents(rssMarkets);
@@ -2110,13 +2180,8 @@ function showBettingModal(marketId, marketTitle, option, account) {
                             min="0.01"
                             max="${balance}"
                             step="0.01"
+                            value=""
                         />
-                        <div class="betting-quick-amounts">
-                            <button type="button" class="betting-quick-btn" data-amount="10">10 BB</button>
-                            <button type="button" class="betting-quick-btn" data-amount="50">50 BB</button>
-                            <button type="button" class="betting-quick-btn" data-amount="100">100 BB</button>
-                            <button type="button" class="betting-quick-btn" data-amount="${balance}">MAX</button>
-                        </div>
                         <div id="betAmountError" class="betting-amount-error" style="display: none;"></div>
                     </div>
                 </div>
@@ -2135,15 +2200,7 @@ function showBettingModal(marketId, marketTitle, option, account) {
   const submitBtn = document.getElementById("submitBet");
   const amountInput = document.getElementById("betAmount");
   const errorDiv = document.getElementById("betAmountError");
-  const quickBtns = document.querySelectorAll(".betting-quick-btn");
-  amountInput.focus();
-  quickBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const amount = btn.getAttribute("data-amount");
-      amountInput.value = amount || "";
-      errorDiv.style.display = "none";
-    });
-  });
+  setTimeout(() => amountInput.focus(), 100);
   const closeModal = () => {
     modal.classList.add("modal-closing");
     setTimeout(() => modal.remove(), 300);
@@ -2528,12 +2585,24 @@ function selectAccount(accountName) {
   }
   UIBuilder.updateSelectedAccount(selectedAccount);
   updateAccountsToggleDisplay();
+  updatePriceActionAccountDisplay();
   closeAccountsDropdown();
+  closePriceActionAccountsDropdown();
 }
 function updateAccountsToggleDisplay() {
   const toggleBtn = document.getElementById("accountsToggle");
   const displayName = document.getElementById("selectedAccountName");
   if (toggleBtn && displayName) {
+    if (selectedAccount) {
+      displayName.textContent = selectedAccount.name;
+    } else {
+      displayName.textContent = "Select Account";
+    }
+  }
+}
+function updatePriceActionAccountDisplay() {
+  const displayName = document.getElementById("selectedAccountNamePriceAction");
+  if (displayName) {
     if (selectedAccount) {
       displayName.textContent = selectedAccount.name;
     } else {
@@ -2551,9 +2620,25 @@ function toggleAccountsDropdown() {
     console.log("After toggle - dropdown hidden:", dropdown.classList.contains("hidden"));
   }
 }
+function togglePriceActionAccountsDropdown() {
+  const dropdown = document.getElementById("accountsDropdownPriceAction");
+  const toggle = document.getElementById("accountsTogglePriceAction");
+  if (dropdown && toggle) {
+    dropdown.classList.toggle("hidden");
+    toggle.classList.toggle("active");
+  }
+}
 function closeAccountsDropdown() {
   const dropdown = document.getElementById("accountsDropdown");
   const toggle = document.getElementById("accountsToggle");
+  if (dropdown && toggle) {
+    dropdown.classList.add("hidden");
+    toggle.classList.remove("active");
+  }
+}
+function closePriceActionAccountsDropdown() {
+  const dropdown = document.getElementById("accountsDropdownPriceAction");
+  const toggle = document.getElementById("accountsTogglePriceAction");
   if (dropdown && toggle) {
     dropdown.classList.add("hidden");
     toggle.classList.remove("active");
@@ -2639,6 +2724,7 @@ async function init() {
     app.appendChild(priceActionContainer);
     await loadMarkets();
     await loadActiveMarketsFromRSS();
+    startAIEventMonitoring();
     await updatePrices();
     await loadPolymarketEvents();
     setInterval(updatePrices, 30000);
@@ -2670,6 +2756,19 @@ function setupEventListeners() {
   const accountsList = document.getElementById("accountsList");
   if (accountsList) {
     accountsList.addEventListener("click", (e) => {
+      if (e.target.classList.contains("account-item")) {
+        const accountName = e.target.dataset.account;
+        selectAccount(accountName);
+      }
+    });
+  }
+  const togglePriceAction = document.getElementById("accountsTogglePriceAction");
+  if (togglePriceAction) {
+    togglePriceAction.addEventListener("click", togglePriceActionAccountsDropdown);
+  }
+  const accountsListPriceAction = document.getElementById("accountsListPriceAction");
+  if (accountsListPriceAction) {
+    accountsListPriceAction.addEventListener("click", (e) => {
       if (e.target.classList.contains("account-item")) {
         const accountName = e.target.dataset.account;
         selectAccount(accountName);
@@ -2720,10 +2819,89 @@ function setupEventListeners() {
   if (exportCSVBtn) {
     exportCSVBtn.addEventListener("click", exportRecipesToCSV);
   }
+  setupPriceActionListeners();
   document.addEventListener("click", (e) => {
-    const selector = document.querySelector(".accounts-selector");
-    if (selector && !selector.contains(e.target)) {
+    const mainSelector = document.getElementById("accountsToggle")?.parentElement;
+    const priceActionSelector = document.getElementById("accountsTogglePriceAction")?.parentElement;
+    if (mainSelector && !mainSelector.contains(e.target)) {
       closeAccountsDropdown();
+    }
+    if (priceActionSelector && !priceActionSelector.contains(e.target)) {
+      closePriceActionAccountsDropdown();
+    }
+  });
+}
+function setupPriceActionListeners() {
+  console.log("\uD83D\uDD27 Setting up Price Action event listeners...");
+  const btcCard = document.querySelector("#selectBtcCard");
+  const solCard = document.querySelector("#selectSolCard");
+  console.log("\uD83D\uDD0D Found cards:", { btc: !!btcCard, sol: !!solCard });
+  btcCard?.addEventListener("click", () => {
+    console.log("₿ Bitcoin card clicked");
+    debugConsole.log("₿ Bitcoin selected", "info");
+    btcCard.classList.add("active-asset");
+    solCard?.classList.remove("active-asset");
+  });
+  solCard?.addEventListener("click", () => {
+    console.log("◎ Solana card clicked");
+    debugConsole.log("◎ Solana selected", "info");
+    solCard.classList.add("active-asset");
+    btcCard?.classList.remove("active-asset");
+  });
+  const time1min = document.querySelector("#timeframe1min");
+  const time15min = document.querySelector("#timeframe15min");
+  time1min?.addEventListener("click", () => {
+    console.log("⏱️ 1 minute selected");
+    debugConsole.log("⏱️ 1 minute selected", "info");
+    time1min.classList.add("active");
+    time15min?.classList.remove("active");
+  });
+  time15min?.addEventListener("click", () => {
+    console.log("⏱️ 15 minutes selected");
+    debugConsole.log("⏱️ 15 minutes selected", "info");
+    time15min.classList.add("active");
+    time1min?.classList.remove("active");
+  });
+  const higherBtn = document.querySelector("#predictHigher");
+  const lowerBtn = document.querySelector("#predictLower");
+  higherBtn?.addEventListener("click", () => {
+    console.log("\uD83D\uDCC8 Higher selected");
+    debugConsole.log("\uD83D\uDCC8 Higher selected", "info");
+    higherBtn.classList.add("active");
+    lowerBtn?.classList.remove("active");
+  });
+  lowerBtn?.addEventListener("click", () => {
+    console.log("\uD83D\uDCC9 Lower selected");
+    debugConsole.log("\uD83D\uDCC9 Lower selected", "info");
+    lowerBtn.classList.add("active");
+    higherBtn?.classList.remove("active");
+  });
+  const betBtn = document.querySelector("#placePriceActionBet");
+  betBtn?.addEventListener("click", async () => {
+    console.log("\uD83C\uDFB2 BET BUTTON CLICKED");
+    const selectedCard = document.querySelector(".price-card.active-asset");
+    const selectedAsset = selectedCard?.getAttribute("data-asset");
+    const selectedTime = document.querySelector(".option-btn[data-time].active")?.getAttribute("data-time");
+    const selectedDirection = document.querySelector(".option-btn[data-direction].active")?.getAttribute("data-direction");
+    const betAmountInput = document.querySelector("#betAmount");
+    const amount = parseFloat(betAmountInput?.value || "10");
+    console.log("Bet Details:", { asset: selectedAsset, time: selectedTime, direction: selectedDirection, amount });
+    debugConsole.log(`\uD83C\uDFB2 Placing bet: ${amount} BB on ${selectedAsset} ${selectedDirection} (${selectedTime}s)`, "info");
+    if (!selectedAsset || !selectedDirection || !selectedTime) {
+      debugConsole.log("❌ Please select asset, direction and timeframe", "error");
+      return;
+    }
+    if (!selectedAccount) {
+      debugConsole.log("❌ Please select an account first", "error");
+      return;
+    }
+    try {
+      const duration = parseInt(selectedTime);
+      await price_action_default.placePriceBet(selectedAsset, selectedDirection, amount, duration, selectedAccount.name, selectedAccount.address);
+      debugConsole.log(`✅ Bet placed successfully`, "success");
+    } catch (error) {
+      console.error("Bet placement error:", error);
+      debugConsole.log(`❌ Bet failed: ${error}`, "error");
     }
   });
 }

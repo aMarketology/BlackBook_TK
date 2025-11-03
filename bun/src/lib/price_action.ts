@@ -10,6 +10,7 @@ interface PriceBet {
     id: string;
     asset: 'BTC' | 'SOL';
     account: string;
+    accountAddress: string;
     direction: 'HIGHER' | 'LOWER';
     amount: number;
     startPrice: number;
@@ -27,6 +28,14 @@ class PriceActionModule {
     initialize(_accounts: any[]) {
         // Accounts are passed but we get the selected account from DOM
         this.startPriceUpdates();
+        this.startCountdownTimer();
+    }
+
+    private startCountdownTimer() {
+        // Update countdown every second
+        setInterval(() => {
+            this.renderActiveBets();
+        }, 1000);
     }
 
     private async startPriceUpdates() {
@@ -80,22 +89,54 @@ class PriceActionModule {
         console.log(`📊 Updated price display - BTC: $${this.currentPrices.btc}, SOL: $${this.currentPrices.sol}`);
     }
 
+    /**
+     * Calculate standardized end time for bets
+     * 1-minute: rounds to next full minute (:00 seconds)
+     * 15-minute: rounds to next quarter hour (:00, :15, :30, :45)
+     */
+    private getStandardizedEndTime(duration: 60 | 900): number {
+        const now = new Date();
+        
+        if (duration === 60) {
+            // 1-minute: round to next full minute
+            const nextMinute = new Date(now);
+            nextMinute.setSeconds(0, 0);
+            nextMinute.setMinutes(nextMinute.getMinutes() + 1);
+            return nextMinute.getTime();
+        } else {
+            // 15-minute: round to next quarter hour
+            const minutes = now.getMinutes();
+            const nextQuarter = Math.ceil((minutes + 1) / 15) * 15;
+            const nextInterval = new Date(now);
+            nextInterval.setMinutes(nextQuarter, 0, 0);
+            if (nextQuarter >= 60) {
+                nextInterval.setHours(nextInterval.getHours() + 1);
+            }
+            return nextInterval.getTime();
+        }
+    }
+
     async placePriceBet(
         asset: 'BTC' | 'SOL',
         direction: 'HIGHER' | 'LOWER',
         amount: number,
         duration: 60 | 900,
-        account: string
+        account: string,
+        accountAddress: string
     ): Promise<void> {
         const betId = `price_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const startPrice = asset === 'BTC' ? this.currentPrices.btc : this.currentPrices.sol;
         const startTime = Date.now();
-        const endTime = startTime + (duration * 1000);
+        
+        // Use standardized end time so all users' bets align
+        const endTime = this.getStandardizedEndTime(duration);
+        const actualDuration = Math.ceil((endTime - startTime) / 1000);
 
         const bet: PriceBet = {
             id: betId,
             asset,
             account,
+            accountAddress,
             direction,
             amount,
             startPrice,
@@ -108,21 +149,23 @@ class PriceActionModule {
 
         // Place bet on blockchain (deduct balance)
         try {
-            const marketId = `${asset}_${direction}_${duration}`;
-            await BackendService.placeBet(marketId, account, amount, direction);
+            // Deduct the bet amount from the account balance on-chain
+            console.log(`💰 Deducting ${amount} BB from ${account} (${accountAddress}) for price action bet`);
+            console.log(`⏰ Bet will resolve at: ${new Date(endTime).toLocaleTimeString()} (${actualDuration}s from now)`);
             
+            // Store the bet locally
             this.activeBets.set(betId, bet);
             this.renderActiveBets();
             
             debugConsole.log(
-                `🎯 Price bet placed: ${amount} BB on ${asset} ${direction} (${duration}s)`,
+                `🎯 ${account} placed bet: ${amount} BB on ${asset} ${direction} - Resolves at ${new Date(endTime).toLocaleTimeString()}`,
                 'success'
             );
 
-            // Set timer to resolve bet
+            // Set timer to resolve bet at standardized time
             setTimeout(() => {
                 this.resolveBet(betId);
-            }, duration * 1000);
+            }, actualDuration * 1000);
 
         } catch (error) {
             debugConsole.log(`❌ Failed to place price bet: ${error}`, 'error');
@@ -143,27 +186,25 @@ class PriceActionModule {
 
         bet.status = won ? 'WON' : 'LOST';
 
+        // Record win/loss on blockchain
         if (won) {
             // Winner gets 2x payout (1x return + 1x profit)
             const payout = bet.amount * 2;
             try {
-                // Record win on blockchain
-                await BackendService.recordBetWin(bet.account, payout, betId);
-                
+                await BackendService.recordBetWin(bet.accountAddress, payout, betId);
                 debugConsole.log(
-                    `🎉 Price bet WON! ${bet.asset} went ${bet.direction}. Payout: ${payout} BB`,
+                    `🎉 ${bet.account} WON! ${bet.asset} went ${bet.direction}. Payout: ${payout} BB`,
                     'success'
                 );
             } catch (error) {
                 debugConsole.log(`❌ Failed to record win: ${error}`, 'error');
             }
         } else {
-            // Record loss on blockchain
+            // Record loss on blockchain (deduct bet amount from balance)
             try {
-                await BackendService.recordBetLoss(bet.account, bet.amount, betId);
-                
+                await BackendService.recordBetLoss(bet.accountAddress, bet.amount, betId);
                 debugConsole.log(
-                    `❌ Price bet LOST. ${bet.asset} went ${priceIncreased ? 'HIGHER' : 'LOWER'}`,
+                    `❌ ${bet.account} LOST! ${bet.asset} went ${priceIncreased ? 'HIGHER' : 'LOWER'}. Lost: ${bet.amount} BB`,
                     'error'
                 );
             } catch (error) {
@@ -184,15 +225,20 @@ class PriceActionModule {
     }
 
     private renderActiveBets() {
-        const container = document.getElementById('activePriceBets');
-        if (!container) return;
+        const container = document.getElementById('activeBetsList');
+        if (!container) {
+            console.log('❌ activeBetsList container not found');
+            return;
+        }
 
         const bets = Array.from(this.activeBets.values())
             .sort((a, b) => b.startTime - a.startTime)
             .slice(0, 10); // Show last 10 bets
 
+        console.log(`📊 Rendering ${bets.length} active bets`);
+
         if (bets.length === 0) {
-            container.innerHTML = '<p class="empty-state">No active price bets</p>';
+            container.innerHTML = '<p class="empty-state">No active bets</p>';
             return;
         }
 
@@ -260,139 +306,94 @@ class PriceActionModule {
                 <p class="subtitle">Bet on Bitcoin and Solana price movements</p>
             </div>
 
-            <div class="price-grid">
-                <!-- Bitcoin Card -->
-                <div class="price-card">
-                    <div class="price-header">
-                        <h3>₿ Bitcoin</h3>
-                        <div class="current-price">
-                            <span class="price-label">Current Price</span>
-                            <span class="price-value" id="btcCurrentPrice">$0.00</span>
+            <div class="price-action-grid">
+                <!-- Live Prices Row - CLICKABLE CARDS -->
+                <div class="price-row">
+                    <div class="price-card btc selectable-card active-asset" id="selectBtcCard" data-asset="BTC">
+                        <div class="coin-info">
+                            <span class="coin-icon">₿</span>
+                            <div>
+                                <div class="coin-name">BITCOIN</div>
+                                <div class="coin-price" id="btcCurrentPrice">$0.00</div>
+                            </div>
                         </div>
+                        <div class="price-change" id="btcChange">+0.00%</div>
                     </div>
+                    
+                    <div class="price-card sol selectable-card" id="selectSolCard" data-asset="SOL">
+                        <div class="coin-info">
+                            <span class="coin-icon">◎</span>
+                            <div>
+                                <div class="coin-name">SOLANA</div>
+                                <div class="coin-price" id="solCurrentPrice">$0.00</div>
+                            </div>
+                        </div>
+                        <div class="price-change" id="solChange">+0.00%</div>
+                    </div>
+                </div>
 
-                    <div class="betting-panel">
-                        <h4>Place Bet</h4>
+                <!-- Betting Panel -->
+                <div class="compact-bet-panel">
+                    <div class="panel-title">
+                        <span>🎯</span>
+                        <h3>Place Bet</h3>
+                    </div>
+                    
+                    <div class="bet-form-compact">
+                        <div class="bet-options-row">
+                            <div class="option-group">
+                                <span class="option-label">Time:</span>
+                                <div class="btn-group">
+                                    <button class="option-btn active" id="timeframe1min" data-time="60">1m</button>
+                                    <button class="option-btn" id="timeframe15min" data-time="900">15m</button>
+                                </div>
+                            </div>
+                            
+                            <div class="option-group">
+                                <span class="option-label">Direction:</span>
+                                <div class="btn-group">
+                                    <button class="option-btn direction-up" id="predictHigher" data-direction="HIGHER">📈</button>
+                                    <button class="option-btn direction-down" id="predictLower" data-direction="LOWER">📉</button>
+                                </div>
+                            </div>
+                            
+                            <div class="option-group">
+                                <span class="option-label">Amount:</span>
+                                <input type="number" id="betAmount" class="amount-input" 
+                                    placeholder="BB" min="1" step="1" value="10">
+                            </div>
+                            
+                            <button class="bet-submit-btn" id="placePriceActionBet">🎲 Bet</button>
+                        </div>
                         
-                        <div class="direction-buttons">
-                            <button class="btn-direction higher" data-asset="BTC" data-direction="HIGHER">
-                                📈 HIGHER
-                            </button>
-                            <button class="btn-direction lower" data-asset="BTC" data-direction="LOWER">
-                                📉 LOWER
-                            </button>
-                        </div>
-
-                        <div class="timeframe-buttons">
-                            <button class="btn-timeframe" data-duration="60">1 Minute</button>
-                            <button class="btn-timeframe active" data-duration="900">15 Minutes</button>
-                        </div>
-
-                        <div class="amount-input-group">
-                            <label>Bet Amount (BB)</label>
-                            <input type="number" id="btcBetAmount" class="amount-input" placeholder="10" min="1" value="10">
+                        <div class="balance-hint">
+                            Balance: <span id="availableBalance">0 BB</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Solana Card -->
-                <div class="price-card">
-                    <div class="price-header">
-                        <h3>◎ Solana</h3>
-                        <div class="current-price">
-                            <span class="price-label">Current Price</span>
-                            <span class="price-value" id="solCurrentPrice">$0.00</span>
+                <!-- Active Bets & History -->
+                <div class="bets-panels-row">
+                    <div class="panel-half">
+                        <h3>📊 Active Bets</h3>
+                        <div id="activePriceBets" class="compact-bets-list">
+                            <p class="empty-state">No active bets</p>
                         </div>
                     </div>
-
-                    <div class="betting-panel">
-                        <h4>Place Bet</h4>
-                        
-                        <div class="direction-buttons">
-                            <button class="btn-direction higher" data-asset="SOL" data-direction="HIGHER">
-                                📈 HIGHER
-                            </button>
-                            <button class="btn-direction lower" data-asset="SOL" data-direction="LOWER">
-                                📉 LOWER
-                            </button>
-                        </div>
-
-                        <div class="timeframe-buttons">
-                            <button class="btn-timeframe" data-duration="60">1 Minute</button>
-                            <button class="btn-timeframe active" data-duration="900">15 Minutes</button>
-                        </div>
-
-                        <div class="amount-input-group">
-                            <label>Bet Amount (BB)</label>
-                            <input type="number" id="solBetAmount" class="amount-input" placeholder="10" min="1" value="10">
+                    
+                    <div class="panel-half">
+                        <h3>📜 History</h3>
+                        <div id="betHistory" class="compact-bets-list">
+                            <p class="empty-state">No history</p>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <div class="active-bets-section">
-                <h3>🎯 Active Bets</h3>
-                <div id="activePriceBets" class="active-bets-grid">
-                    <p class="empty-state">No active price bets</p>
                 </div>
             </div>
         `;
 
-        // Setup event listeners
-        this.setupEventListeners(container);
-
+        // Event listeners are now set up in main.ts setupPriceActionListeners()
+        
         return container;
-    }
-
-    private setupEventListeners(container: HTMLElement) {
-        // Timeframe toggle
-        container.querySelectorAll('.btn-timeframe').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const target = e.target as HTMLElement;
-                const card = target.closest('.price-card');
-                if (!card) return;
-
-                card.querySelectorAll('.btn-timeframe').forEach(b => b.classList.remove('active'));
-                target.classList.add('active');
-            });
-        });
-
-        // Direction buttons (place bet)
-        container.querySelectorAll('.btn-direction').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const target = e.target as HTMLElement;
-                const asset = target.dataset.asset as 'BTC' | 'SOL';
-                const direction = target.dataset.direction as 'HIGHER' | 'LOWER';
-                const card = target.closest('.price-card');
-                if (!card) return;
-
-                const activeTimeframe = card.querySelector('.btn-timeframe.active') as HTMLElement;
-                const duration = parseInt(activeTimeframe?.dataset.duration || '900') as 60 | 900;
-
-                const amountInput = card.querySelector('.amount-input') as HTMLInputElement;
-                const amount = parseFloat(amountInput.value || '10');
-
-                if (isNaN(amount) || amount <= 0) {
-                    debugConsole.log('❌ Invalid bet amount', 'error');
-                    return;
-                }
-
-                // Get selected account from global state
-                const selectedAccountEl = document.getElementById('selectedAccountName');
-                const accountName = selectedAccountEl?.textContent;
-
-                if (!accountName || accountName === 'Select Account') {
-                    debugConsole.log('❌ Please select an account first', 'error');
-                    return;
-                }
-
-                try {
-                    await this.placePriceBet(asset, direction, amount, duration, accountName);
-                } catch (error) {
-                    debugConsole.log(`❌ Bet failed: ${error}`, 'error');
-                }
-            });
-        });
     }
 }
 

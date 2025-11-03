@@ -555,13 +555,59 @@ static buildMainContent(): HTMLElement {
         page.id = 'priceActionPage';
         page.className = 'page';
         
-        // Page header
+        // Page header with account selector
         const pageHeader = document.createElement('div');
         pageHeader.className = 'page-header';
-        pageHeader.innerHTML = `
+        
+        const headerContent = document.createElement('div');
+        headerContent.className = 'header-content';
+        headerContent.style.display = 'flex';
+        headerContent.style.justifyContent = 'space-between';
+        headerContent.style.alignItems = 'center';
+        headerContent.style.width = '100%';
+        
+        // Left side - back button and title
+        const headerLeft = document.createElement('div');
+        headerLeft.style.display = 'flex';
+        headerLeft.style.alignItems = 'center';
+        headerLeft.style.gap = '15px';
+        headerLeft.innerHTML = `
             <button class="back-btn" id="backFromPriceActionBtn">← Back</button>
             <h2>⚡ Price Action</h2>
         `;
+        
+        // Right side - account selector
+        const headerRight = document.createElement('div');
+        headerRight.className = 'header-right';
+        
+        const accountsSelector = document.createElement('div');
+        accountsSelector.className = 'accounts-selector';
+        
+        const toggleBtn = document.createElement('button');
+        toggleBtn.id = 'accountsTogglePriceAction';
+        toggleBtn.className = 'accounts-toggle';
+        toggleBtn.innerHTML = `
+            <span id="selectedAccountNamePriceAction">Select Account</span>
+            <span class="dropdown-arrow">▼</span>
+        `;
+        
+        const dropdown = document.createElement('div');
+        dropdown.id = 'accountsDropdownPriceAction';
+        dropdown.className = 'accounts-dropdown hidden';
+        
+        const accountsList = document.createElement('div');
+        accountsList.id = 'accountsListPriceAction';
+        accountsList.className = 'accounts-list';
+        accountsList.innerHTML = '<p class="loading">Loading accounts...</p>';
+        
+        dropdown.appendChild(accountsList);
+        accountsSelector.appendChild(toggleBtn);
+        accountsSelector.appendChild(dropdown);
+        headerRight.appendChild(accountsSelector);
+        
+        headerContent.appendChild(headerLeft);
+        headerContent.appendChild(headerRight);
+        pageHeader.appendChild(headerContent);
         page.appendChild(pageHeader);
         
         // Page content
@@ -569,24 +615,24 @@ static buildMainContent(): HTMLElement {
         pageContent.className = 'page-content';
         pageContent.innerHTML = `
             <div class="price-action-grid">
-                <!-- Live Prices Row -->
+                <!-- Live Prices Row - CLICKABLE CARDS -->
                 <div class="price-row">
-                    <div class="price-card btc">
+                    <div class="price-card btc selectable-card active-asset" id="selectBtcCard" data-asset="BTC">
                         <div class="coin-info">
                             <span class="coin-icon">₿</span>
                             <div>
-                                <div class="coin-name">Bitcoin</div>
+                                <div class="coin-name">BITCOIN</div>
                                 <div class="coin-price" id="btcPriceAction">$0.00</div>
                             </div>
                         </div>
                         <div class="price-change" id="btcChange">+0.00%</div>
                     </div>
                     
-                    <div class="price-card sol">
+                    <div class="price-card sol selectable-card" id="selectSolCard" data-asset="SOL">
                         <div class="coin-info">
                             <span class="coin-icon">◎</span>
                             <div>
-                                <div class="coin-name">Solana</div>
+                                <div class="coin-name">SOLANA</div>
                                 <div class="coin-price" id="solPriceAction">$0.00</div>
                             </div>
                         </div>
@@ -602,18 +648,9 @@ static buildMainContent(): HTMLElement {
                     </div>
                     
                     <div class="bet-form-compact">
-                        <!-- Asset + Timeframe + Direction in one row -->
                         <div class="bet-options-row">
                             <div class="option-group">
-                                <label>Asset:</label>
-                                <div class="btn-group">
-                                    <button class="option-btn active" id="selectBitcoin" data-asset="bitcoin">₿</button>
-                                    <button class="option-btn" id="selectSolana" data-asset="solana">◎</button>
-                                </div>
-                            </div>
-                            
-                            <div class="option-group">
-                                <label>Time:</label>
+                                <span class="option-label">Time:</span>
                                 <div class="btn-group">
                                     <button class="option-btn active" id="timeframe1min" data-time="60">1m</button>
                                     <button class="option-btn" id="timeframe15min" data-time="900">15m</button>
@@ -621,17 +658,17 @@ static buildMainContent(): HTMLElement {
                             </div>
                             
                             <div class="option-group">
-                                <label>Direction:</label>
+                                <span class="option-label">Direction:</span>
                                 <div class="btn-group">
-                                    <button class="option-btn direction-up" id="predictHigher">📈</button>
-                                    <button class="option-btn direction-down" id="predictLower">📉</button>
+                                    <button class="option-btn direction-up" id="predictHigher" data-direction="HIGHER">📈</button>
+                                    <button class="option-btn direction-down" id="predictLower" data-direction="LOWER">📉</button>
                                 </div>
                             </div>
                             
                             <div class="option-group">
-                                <label>Amount:</label>
+                                <span class="option-label">Amount:</span>
                                 <input type="number" id="betAmount" class="amount-input" 
-                                    placeholder="BB" min="1" step="1">
+                                    placeholder="BB" min="1" step="1" value="10">
                             </div>
                             
                             <button class="bet-submit-btn" id="placePriceActionBet">
@@ -785,6 +822,8 @@ static buildMainContent(): HTMLElement {
      */
     static populateAccountsList(accounts: Account[]): void {
         const accountsList = document.getElementById('accountsList');
+        const accountsListPriceAction = document.getElementById('accountsListPriceAction');
+        
         if (!accountsList) {
             console.log('❌ accountsList element not found');
             return;
@@ -795,6 +834,9 @@ static buildMainContent(): HTMLElement {
         if (accounts.length === 0) {
             console.log('⚠️ No accounts to populate');
             accountsList.innerHTML = '<p class="empty-state">No accounts available</p>';
+            if (accountsListPriceAction) {
+                accountsListPriceAction.innerHTML = '<p class="empty-state">No accounts available</p>';
+            }
             return;
         }
         
@@ -807,6 +849,12 @@ static buildMainContent(): HTMLElement {
         
         console.log('✅ Setting accountsList innerHTML with', accounts.length, 'accounts');
         accountsList.innerHTML = html;
+        
+        // Also populate Price Action account selector
+        if (accountsListPriceAction) {
+            accountsListPriceAction.innerHTML = html;
+            console.log('✅ Also populated Price Action accounts list');
+        }
     }
 
     /**
